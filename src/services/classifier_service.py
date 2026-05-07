@@ -142,6 +142,11 @@ class ClassifierService:
 
     def predict_image(self, file_path: str) -> str:
         """Predict the class of one image using the trained model."""
+        image_path = Path(file_path)
+
+        if not image_path.exists():
+            raise FileNotFoundError(f"Image file not found: {file_path}")
+
         model_path = self.model_output_dir / "macro_classifier.joblib"
 
         if not model_path.exists():
@@ -151,7 +156,7 @@ class ClassifierService:
 
         self.model = joblib.load(model_path)
 
-        features = self.preprocessor.transform(file_path).reshape(1, -1)
+        features = self.preprocessor.transform(str(image_path)).reshape(1, -1)
         prediction = self.model.predict(features)[0]
 
         return str(prediction)
