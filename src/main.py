@@ -2,9 +2,9 @@ from src.services.workflow_service import WorkflowService
 
 
 def main() -> None:
-    """Run Stage 1 workflow."""
+    """Run the main project workflow."""
     workflow = WorkflowService()
-    workflow.run_stage_1()
+    workflow.run_full_pipeline()
 
 
 if __name__ == "__main__":
