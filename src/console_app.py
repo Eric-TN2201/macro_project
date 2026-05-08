@@ -1,4 +1,8 @@
+# console_app.py – interactive menu-driven CLI for the analysis system.
+# Run with: python -m src.console_app
 from src.services.workflow_service import WorkflowService
+
+
 class ConsoleApp:
     """Menu-driven console application for macroinvertebrate image analysis."""
 
@@ -25,23 +29,23 @@ class ConsoleApp:
             choice = input("Select an option: ").strip()
 
             if choice == "1":
-                self.handle_show_summary()
+                self.handle_show_summary()       # Display dataset statistics
 
             elif choice == "2":
-                self.handle_generate_eda()
+                self.handle_generate_eda()       # Save EDA charts and CSVs
 
             elif choice == "3":
-                self.handle_train_classifier()
+                self.handle_train_classifier()   # Train RandomForest model
 
             elif choice == "4":
-                self.handle_predict_image()
+                self.handle_predict_image()      # Classify a single image
 
             elif choice == "5":
-                self.handle_full_pipeline()
+                self.handle_full_pipeline()      # EDA + training in one go
 
             elif choice == "6":
                 print("\nExiting application. Goodbye!")
-                break
+                break  # Exit the loop to terminate the program
 
             else:
                 print("\nInvalid option. Please choose a number from 1 to 6.")
@@ -71,6 +75,7 @@ class ConsoleApp:
         """Handle image prediction option."""
         image_path = input("\nEnter image path: ").strip()
 
+        # Do not proceed if the user entered an empty string
         if not image_path:
             print("\nImage path cannot be empty.")
             return
@@ -78,8 +83,10 @@ class ConsoleApp:
         try:
             self.workflow_service.predict_image(image_path)
         except FileNotFoundError as error:
+            # Path does not point to an existing file
             print(f"\nFile error: {error}")
         except ValueError as error:
+            # Image could not be read or processed
             print(f"\nImage error: {error}")
         except Exception as error:
             print(f"\nError while predicting image: {error}")
@@ -94,6 +101,7 @@ class ConsoleApp:
 
 def main() -> None:
     """Start the console application."""
+    # Build the service layer and hand it to the console UI
     workflow_service = WorkflowService()
     app = ConsoleApp(workflow_service)
     app.run()

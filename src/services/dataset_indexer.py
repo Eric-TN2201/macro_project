@@ -1,3 +1,5 @@
+# dataset_indexer.py – scans data/raw/ and builds a metadata dataframe.
+# Each row represents one image file with its label derived from the parent folder name.
 from pathlib import Path
 
 import cv2
@@ -22,18 +24,23 @@ class DatasetIndexer:
 
         records = []
 
+        # Recursively walk the dataset directory tree
         for file_path in self.data_dir.rglob("*"):
+            # Skip non-image files based on file extension
             if file_path.suffix.lower() not in SUPPORTED_EXTENSIONS:
                 continue
 
             image = cv2.imread(str(file_path))
 
+            # cv2 returns None when a file cannot be decoded as an image
             if image is None:
                 print(f"Warning: could not read image: {file_path}")
                 continue
 
             height, width = image.shape[:2]
+            # Greyscale images have shape (H, W); colour images have shape (H, W, C)
             channels = image.shape[2] if len(image.shape) == 3 else 1
+            # The immediate parent folder name is used as the class label
             label = file_path.parent.name
 
             records.append(

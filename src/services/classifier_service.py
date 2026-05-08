@@ -1,3 +1,5 @@
+# classifier_service.py – trains, evaluates, saves, and loads the image classifier.
+# Uses a RandomForestClassifier operating on flattened greyscale pixel features.
 from pathlib import Path
 
 import joblib
@@ -24,12 +26,14 @@ class ClassifierService:
         self.model_output_dir = model_output_dir
         self.report_output_dir = REPORT_OUTPUT_DIR
 
+        # 100 trees with a fixed seed for reproducibility; n_jobs=-1 uses all CPU cores
         self.model = RandomForestClassifier(
             n_estimators=100,
             random_state=42,
             n_jobs=-1,
         )
 
+        # Ensure output directories exist before any file is written
         self.model_output_dir.mkdir(parents=True, exist_ok=True)
         self.report_output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -40,10 +44,12 @@ class ClassifierService:
 
         for _, row in dataframe.iterrows():
             try:
+                # Transform each image into a flat float32 array
                 image_features = self.preprocessor.transform(row["file_path"])
                 features.append(image_features)
                 labels.append(row["label"])
             except ValueError as error:
+                # Log unreadable images and continue rather than aborting
                 print(f"Skipping image: {error}")
 
         if not features:
@@ -55,9 +61,11 @@ class ClassifierService:
         """Train the classifier and return evaluation results."""
         X, y = self.prepare_features(dataframe)
 
+        # Stratified split requires at least 2 samples per class; fall back if not met
         class_counts = pd.Series(y).value_counts()
         can_stratify = class_counts.min() >= 2
 
+        # 80 / 20 train-test split
         X_train, X_test, y_train, y_test = train_test_split(
             X,
             y,
@@ -70,13 +78,15 @@ class ClassifierService:
 
         predictions = self.model.predict(X_test)
 
+        # Compute evaluation metrics
         accuracy = accuracy_score(y_test, predictions)
         report = classification_report(
             y_test,
             predictions,
-            zero_division=0,
+            zero_division=0,  # Suppress warnings for classes with no predicted samples
         )
 
+        # Build confusion matrix with a consistent label order
         labels = sorted(np.unique(y))
         matrix = confusion_matrix(y_test, predictions, labels=labels)
 
@@ -87,6 +97,7 @@ class ClassifierService:
             "labels": labels,
         }
 
+        # Persist artefacts so subsequent prediction runs do not need retraining
         self.save_training_report(results)
         self.save_confusion_matrix_plot(results)
         self.save_model()
@@ -144,18 +155,22 @@ class ClassifierService:
         """Predict the class of one image using the trained model."""
         image_path = Path(file_path)
 
+        # Validate that the image file actually exists on disk
         if not image_path.exists():
             raise FileNotFoundError(f"Image file not found: {file_path}")
 
         model_path = self.model_output_dir / "macro_classifier.joblib"
 
+        # The model must be trained before prediction can run
         if not model_path.exists():
             raise FileNotFoundError(
                 "Trained model not found. Please train the model first."
             )
 
+        # Load the persisted model from disk
         self.model = joblib.load(model_path)
 
+        # Preprocess the image and reshape to a 2-D array (1 sample x n features)
         features = self.preprocessor.transform(str(image_path)).reshape(1, -1)
         prediction = self.model.predict(features)[0]
 

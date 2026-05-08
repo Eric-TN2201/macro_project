@@ -1,3 +1,5 @@
+# eda_service.py – generates exploratory data analysis charts and summary CSVs.
+# All outputs are written to the configured EDA output directory.
 from pathlib import Path
 
 import cv2
@@ -16,6 +18,7 @@ class EDAService:
 
     def build_summary(self) -> pd.DataFrame:
         """Create and save dataset summary."""
+        # Aggregate key statistics across the whole dataset
         summary = {
             "total_images": [len(self.dataframe)],
             "total_classes": [self.dataframe["label"].nunique()],
@@ -28,8 +31,10 @@ class EDAService:
         }
 
         summary_df = pd.DataFrame(summary)
+        # Save single-row summary table to CSV
         summary_df.to_csv(self.output_dir / "dataset_summary.csv", index=False)
 
+        # Save per-class image counts to a separate CSV
         class_counts = self.dataframe["label"].value_counts().reset_index()
         class_counts.columns = ["label", "image_count"]
         class_counts.to_csv(self.output_dir / "class_counts.csv", index=False)
@@ -41,16 +46,17 @@ class EDAService:
         output_path = self.output_dir / "class_distribution.png"
 
         plt.figure(figsize=(12, 6))
+        # Sort bars by frequency (most common class first)
         order = self.dataframe["label"].value_counts().index
 
         sns.countplot(data=self.dataframe, x="label", order=order)
         plt.title("Macroinvertebrate Images per Class")
         plt.xlabel("Class")
         plt.ylabel("Number of Images")
-        plt.xticks(rotation=90)
+        plt.xticks(rotation=90)  # Rotate labels so long class names don't overlap
         plt.tight_layout()
         plt.savefig(output_path)
-        plt.close()
+        plt.close()  # Release memory after saving
 
         return output_path
 
@@ -58,6 +64,7 @@ class EDAService:
         """Save image width and height distribution chart."""
         output_path = self.output_dir / "image_size_distribution.png"
 
+        # Side-by-side histograms: left for width, right for height
         fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
         sns.histplot(self.dataframe["width"], bins=20, ax=axes[0])
@@ -78,29 +85,33 @@ class EDAService:
         """Save a grid of sample images."""
         output_path = self.output_dir / "sample_grid.png"
 
+        # Randomly sample up to sample_count images for visual inspection
         sample_df = self.dataframe.sample(
             min(sample_count, len(self.dataframe)),
             random_state=42,
         )
 
+        # Fixed 3x3 grid layout
         cols = 3
         rows = 3
 
         fig, axes = plt.subplots(rows, cols, figsize=(10, 10))
-        axes = axes.flatten()
+        axes = axes.flatten()  # Flatten 2-D axes array for easy indexing
 
         for ax, (_, row) in zip(axes, sample_df.iterrows()):
             image = cv2.imread(row["file_path"])
 
             if image is None:
-                ax.axis("off")
+                ax.axis("off")  # Leave the cell blank if the image cannot be read
                 continue
 
+            # Convert BGR (OpenCV default) to RGB for correct colour display
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             ax.imshow(image)
             ax.set_title(row["label"])
             ax.axis("off")
 
+        # Hide any unused grid cells when sample_count < rows * cols
         for ax in axes[len(sample_df):]:
             ax.axis("off")
 
