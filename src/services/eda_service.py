@@ -101,7 +101,7 @@ class EDAService:
         fig, axes = plt.subplots(rows, cols, figsize=(14, 3.5 * rows))
 
         if rows == 1:
-            axes = [axes] if cols == 1 else axes.flatten()
+            axes = axes.flatten()
         else:
             axes = axes.flatten()
 

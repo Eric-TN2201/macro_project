@@ -198,3 +198,34 @@ class ClassifierService:
         prediction = self.model.predict(features)[0]
 
         return str(prediction)
+    
+    def predict_image_with_confidence(self, file_path: str) -> tuple[str, float | None]:
+        """Predict one image and return predicted class with confidence."""
+        image_path = Path(file_path)
+
+        if not image_path.exists() or not image_path.is_file():
+            raise FileNotFoundError(f"Image file not found: {file_path}")
+
+        if image_path.suffix.lower() not in SUPPORTED_EXTENSIONS:
+            raise ValueError(
+                "Unsupported file type. Supported extensions are: "
+                + ", ".join(sorted(SUPPORTED_EXTENSIONS))
+            )
+
+        model_path = self.model_output_dir / "macro_classifier.joblib"
+
+        if not model_path.exists():
+            raise FileNotFoundError(
+                "Trained model not found. Please train the model first."
+            )
+
+        self.model = joblib.load(model_path)
+
+        features = self.preprocessor.transform(str(image_path)).reshape(1, -1)
+        prediction = self.model.predict(features)[0]
+
+        confidence = None
+        if hasattr(self.model, "predict_proba"):
+            confidence = float(self.model.predict_proba(features).max())
+
+        return str(prediction), confidence

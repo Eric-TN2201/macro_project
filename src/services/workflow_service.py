@@ -82,6 +82,18 @@ class WorkflowService:
 
         return prediction
 
+    def predict_image_with_confidence(self, file_path: str) -> tuple[str, float | None]:
+        """Predict the class of a single image with confidence."""
+        prediction, confidence = self.classifier.predict_image_with_confidence(file_path)
+
+        if confidence is not None:
+            print(f"\nPredicted class: {prediction}")
+            print(f"Confidence: {confidence:.2%}")
+        else:
+            print(f"\nPredicted class: {prediction}")
+
+        return prediction, confidence
+    
     def run_stage_1(self) -> None:
         """Run Stage 1 EDA workflow."""
         self.show_summary()

@@ -142,9 +142,16 @@ class MacroApp(tk.Tk):
             return
 
         try:
-            # Delegate to the service layer which handles preprocessing and inference
-            prediction = self.workflow_service.predict_image(self.selected_file)
-            self.result_label.configure(text=f"Predicted class: {prediction}")
+            prediction, confidence = self.workflow_service.predict_image_with_confidence(
+                self.selected_file
+            )
+
+            if confidence is not None:
+                self.result_label.configure(
+                    text=f"Predicted class: {prediction}\nConfidence: {confidence:.2%}"
+                )
+            else:
+                self.result_label.configure(text=f"Predicted class: {prediction}")
             self.status_label.configure(text="Status: Prediction completed")
         except Exception as error:
             messagebox.showerror("Prediction error", str(error))
