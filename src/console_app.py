@@ -1,5 +1,10 @@
-# console_app.py – interactive menu-driven CLI for the analysis system.
-# Run with: python -m src.console_app
+# Student Name:
+# +  u3281913
+# +   u3293786
+# Unit: Software Technology 1 (8995)
+# Assignment: Assignment 3 - Macroinvertebrate Image Analysis System
+
+
 from src.services.workflow_service import WorkflowService
 
 
@@ -7,6 +12,7 @@ class ConsoleApp:
     """Menu-driven console application for macroinvertebrate image analysis."""
 
     def __init__(self, workflow_service: WorkflowService) -> None:
+        """Store the workflow service used by menu actions."""
         self.workflow_service = workflow_service
 
     def show_menu(self) -> None:

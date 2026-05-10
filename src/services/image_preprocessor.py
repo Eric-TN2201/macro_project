@@ -1,5 +1,9 @@
-# image_preprocessor.py – converts raw image files into flat feature vectors.
-# The pipeline is: load as greyscale -> resize -> normalise to [0, 1] -> flatten.
+# Student Name:
+# +  u3281913
+# +   u3293786
+# Unit: Software Technology 1 (8995)
+# Assignment: Assignment 3 - Macroinvertebrate Image Analysis System
+
 import cv2
 import numpy as np
 
@@ -10,6 +14,7 @@ class ImagePreprocessor:
     """Convert raw images into model-ready numeric features."""
 
     def __init__(self, image_size: tuple[int, int] = IMAGE_SIZE) -> None:
+        """Set target size used to resize all input images."""
         self.image_size = image_size
 
     def transform(self, file_path: str) -> np.ndarray:

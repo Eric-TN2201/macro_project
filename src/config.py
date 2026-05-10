@@ -1,5 +1,10 @@
-# config.py – central configuration for all project paths and constants.
-# All other modules import from here so that paths are defined in one place.
+# Student Name:
+# +  u3281913
+# +   u3293786
+# Unit: Software Technology 1 (8995)
+# Assignment: Assignment 3 - Macroinvertebrate Image Analysis System
+
+
 from pathlib import Path
 
 # Resolve the project root (two levels above this file: src/ -> project root)

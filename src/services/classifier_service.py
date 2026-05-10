@@ -1,5 +1,10 @@
-# classifier_service.py – trains, evaluates, saves, and loads the image classifier.
-# Uses a RandomForestClassifier operating on flattened greyscale pixel features.
+# Student Name:
+# +  u3281913
+# +   u3293786
+# Unit: Software Technology 1 (8995)
+# Assignment: Assignment 3 - Macroinvertebrate Image Analysis System
+
+
 from pathlib import Path
 
 import joblib
@@ -25,13 +30,13 @@ class ClassifierService:
     """Train, evaluate, and save the baseline image classification model."""
 
     def __init__(self, preprocessor, model_output_dir: Path = MODEL_OUTPUT_DIR) -> None:
+        """Initialize classifier settings and output directories."""
         self.preprocessor = preprocessor
         self.model_output_dir = model_output_dir
         self.report_output_dir = REPORT_OUTPUT_DIR
 
-        # 100 trees with a fixed seed for reproducibility; n_jobs=-1 uses all CPU cores
         self.model = RandomForestClassifier(
-            n_estimators=100,
+            n_estimators=200,
             random_state=42,
             n_jobs=-1,
             class_weight="balanced",

@@ -1,5 +1,9 @@
-# workflow_service.py – orchestrates all project stages (EDA, training, prediction).
-# This is the single coordinator that the GUI and console apps talk to.
+# Student Name:
+# +  u3281913
+# +   u3293786
+# Unit: Software Technology 1 (8995)
+# Assignment: Assignment 3 - Macroinvertebrate Image Analysis System
+
 import pandas as pd
 
 from src.config import EDA_OUTPUT_DIR
@@ -13,6 +17,7 @@ class WorkflowService:
     """Coordinate the main project workflow."""
 
     def __init__(self) -> None:
+        """Initialize all services used by the application workflow."""
         # Create the individual services; classifier depends on the preprocessor
         self.indexer = DatasetIndexer()
         self.preprocessor = ImagePreprocessor()

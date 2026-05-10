@@ -1,5 +1,9 @@
-# dataset_indexer.py – scans data/raw/ and builds a metadata dataframe.
-# Each row represents one image file with its label derived from the parent folder name.
+# Student Name:
+# +  u3281913
+# +   u3293786
+# Unit: Software Technology 1 (8995)
+# Assignment: Assignment 3 - Macroinvertebrate Image Analysis System
+
 from pathlib import Path
 
 import cv2
@@ -13,6 +17,7 @@ class DatasetIndexer:
     """Scan the image dataset and build a dataframe of image metadata."""
 
     def __init__(self, data_dir: Path = RAW_DATA_DIR) -> None:
+        """Set dataset root directory used for indexing images."""
         self.data_dir = data_dir
 
     def build_dataframe(self) -> pd.DataFrame:

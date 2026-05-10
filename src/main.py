@@ -1,5 +1,10 @@
-# main.py – entry point for running the full pipeline from the command line.
-# Usage: python -m src.main
+# Student Name:
+# +  u3281913
+# +   u3293786
+# Unit: Software Technology 1 (8995)
+# Assignment: Assignment 3 - Macroinvertebrate Image Analysis System
+
+
 from src.services.workflow_service import WorkflowService
 
 

@@ -1,5 +1,9 @@
-# eda_service.py – generates exploratory data analysis charts and summary CSVs.
-# All outputs are written to the configured EDA output directory.
+# Student Name:
+# +  u3281913
+# +   u3293786
+# Unit: Software Technology 1 (8995)
+# Assignment: Assignment 3 - Macroinvertebrate Image Analysis System
+
 from pathlib import Path
 
 import cv2
@@ -15,6 +19,7 @@ class EDAService:
     """Generate exploratory data analysis outputs for the image dataset."""
 
     def __init__(self, dataframe: pd.DataFrame, output_dir: Path) -> None:
+        """Store the source dataframe and ensure output directory exists."""
         self.dataframe = dataframe
         self.output_dir = output_dir
         self.output_dir.mkdir(parents=True, exist_ok=True)

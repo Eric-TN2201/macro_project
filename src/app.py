@@ -1,5 +1,9 @@
-# app.py – Tkinter GUI entry point for the Macroinvertebrate Image Analysis System.
-# Run with: python -m src.app
+# Student Name:
+# +  u3281913
+# +   u3293786
+# Unit: Software Technology 1 (8995)
+# Assignment: Assignment 3 - Macroinvertebrate Image Analysis System
+
 from pathlib import Path
 import tkinter as tk
 from tkinter import filedialog, messagebox
@@ -16,6 +20,7 @@ class MacroApp(tk.Tk):
     PREVIEW_SIZE = (350, 350)
 
     def __init__(self, workflow_service: WorkflowService) -> None:
+        """Initialize the GUI window and connect button actions to services."""
         super().__init__()
 
         # Store reference to the service layer
