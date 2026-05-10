@@ -3,6 +3,9 @@
 from pathlib import Path
 
 import cv2
+import matplotlib
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -81,40 +84,43 @@ class EDAService:
 
         return output_path
 
-    def save_sample_grid(self, sample_count: int = 9) -> Path:
-        """Save a grid of sample images."""
+    def save_sample_grid(self, sample_count: int = 12) -> Path:
+        """Save a grid with one representative sample image per class."""
         output_path = self.output_dir / "sample_grid.png"
 
-        # Randomly sample up to sample_count images for visual inspection
-        sample_df = self.dataframe.sample(
-            min(sample_count, len(self.dataframe)),
-            random_state=42,
-        )
+        samples = []
+        for label in sorted(self.dataframe["label"].unique()):
+            class_df = self.dataframe[self.dataframe["label"] == label]
+            samples.append(class_df.sample(1, random_state=42))
 
-        # Fixed 3x3 grid layout
-        cols = 3
-        rows = 3
+        sample_df = pd.concat(samples).head(sample_count).reset_index(drop=True)
 
-        fig, axes = plt.subplots(rows, cols, figsize=(10, 10))
-        axes = axes.flatten()  # Flatten 2-D axes array for easy indexing
+        cols = 4
+        rows = int((len(sample_df) + cols - 1) / cols)
+
+        fig, axes = plt.subplots(rows, cols, figsize=(14, 3.5 * rows))
+
+        if rows == 1:
+            axes = [axes] if cols == 1 else axes.flatten()
+        else:
+            axes = axes.flatten()
 
         for ax, (_, row) in zip(axes, sample_df.iterrows()):
             image = cv2.imread(row["file_path"])
 
             if image is None:
-                ax.axis("off")  # Leave the cell blank if the image cannot be read
+                ax.axis("off")
                 continue
 
-            # Convert BGR (OpenCV default) to RGB for correct colour display
             image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
             ax.imshow(image)
-            ax.set_title(row["label"])
+            ax.set_title(row["label"], fontsize=9)
             ax.axis("off")
 
-        # Hide any unused grid cells when sample_count < rows * cols
         for ax in axes[len(sample_df):]:
             ax.axis("off")
 
+        plt.suptitle("Representative Sample Images by Class", fontsize=14)
         plt.tight_layout()
         plt.savefig(output_path)
         plt.close()

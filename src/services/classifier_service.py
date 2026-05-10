@@ -3,6 +3,9 @@
 from pathlib import Path
 
 import joblib
+import matplotlib
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -15,7 +18,7 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import train_test_split
 
-from src.config import MODEL_OUTPUT_DIR, REPORT_OUTPUT_DIR
+from src.config import MODEL_OUTPUT_DIR, REPORT_OUTPUT_DIR, SUPPORTED_EXTENSIONS
 
 
 class ClassifierService:
@@ -31,6 +34,7 @@ class ClassifierService:
             n_estimators=100,
             random_state=42,
             n_jobs=-1,
+            class_weight="balanced",
         )
 
         # Ensure output directories exist before any file is written
@@ -61,15 +65,28 @@ class ClassifierService:
         """Train the classifier and return evaluation results."""
         X, y = self.prepare_features(dataframe)
 
+        if len(y) < 2:
+            raise ValueError("At least 2 valid images are required for model training.")
+
+        unique_classes = np.unique(y)
+        if len(unique_classes) < 2:
+            raise ValueError(
+                "At least 2 classes are required for classification training."
+            )
+
         # Stratified split requires at least 2 samples per class; fall back if not met
         class_counts = pd.Series(y).value_counts()
-        can_stratify = class_counts.min() >= 2
+        test_count = max(1, int(round(len(y) * 0.2)))
+        test_count = min(test_count, len(y) - 1)
+        can_stratify = class_counts.min() >= 2 and test_count >= len(unique_classes)
 
-        # 80 / 20 train-test split
+        # Default to an 80 / 20 split while remaining valid for small datasets.
+        test_size = test_count / len(y)
+
         X_train, X_test, y_train, y_test = train_test_split(
             X,
             y,
-            test_size=0.2,
+            test_size=test_size,
             random_state=42,
             stratify=y if can_stratify else None,
         )
@@ -156,8 +173,14 @@ class ClassifierService:
         image_path = Path(file_path)
 
         # Validate that the image file actually exists on disk
-        if not image_path.exists():
+        if not image_path.exists() or not image_path.is_file():
             raise FileNotFoundError(f"Image file not found: {file_path}")
+
+        if image_path.suffix.lower() not in SUPPORTED_EXTENSIONS:
+            raise ValueError(
+                "Unsupported file type. Supported extensions are: "
+                + ", ".join(sorted(SUPPORTED_EXTENSIONS))
+            )
 
         model_path = self.model_output_dir / "macro_classifier.joblib"
 

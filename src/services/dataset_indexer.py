@@ -6,6 +6,7 @@ import cv2
 import pandas as pd
 
 from src.config import RAW_DATA_DIR, SUPPORTED_EXTENSIONS, EDA_OUTPUT_DIR
+from src.models.records import ImageRecord
 
 
 class DatasetIndexer:
@@ -43,13 +44,21 @@ class DatasetIndexer:
             # The immediate parent folder name is used as the class label
             label = file_path.parent.name
 
+            record = ImageRecord(
+                file_path=file_path,
+                label=label,
+                width=width,
+                height=height,
+                channels=channels,
+            )
+
             records.append(
                 {
-                    "file_path": str(file_path),
-                    "label": label,
-                    "width": width,
-                    "height": height,
-                    "channels": channels,
+                    "file_path": str(record.file_path),
+                    "label": record.label,
+                    "width": record.width,
+                    "height": record.height,
+                    "channels": record.channels,
                 }
             )
 

@@ -1,3 +1,27 @@
+## Group Members
+- Name - Student ID
+- Name - Student ID
+
+## Stages
+- Stage 1: Exploratory Data Analysis
+- Stage 2: Predictive Analytics / Classification
+- Stage 3: Application Deployment
+
+## Main Classes
+- DatasetIndexer
+- EDAService
+- ImagePreprocessor
+- ClassifierService
+- WorkflowService
+- ConsoleApp
+- MacroApp
+
+## Testing
+Testing evidence is documented in MANUAL_TESTING.md.
+
+## Acknowledgement
+Some image loading, preprocessing, visualisation, and classification techniques were adapted from ST1 Week 5–8 tutorial/lab activities and modified for this project.
+
 # Macroinvertebrate Image Analysis System
 
 This project builds a baseline image classification pipeline for freshwater
