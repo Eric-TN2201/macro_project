@@ -1,6 +1,6 @@
 ## Group Members
-- Name - Student ID
-- Name - Student ID
+-u3281913
+-u3293786
 
 ## Stages
 - Stage 1: Exploratory Data Analysis
