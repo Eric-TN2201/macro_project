@@ -87,7 +87,7 @@ class ConsoleApp:
             return
 
         try:
-            self.workflow_service.predict_image(image_path)
+            self.workflow_service.predict_image_with_confidence(image_path)
         except FileNotFoundError as error:
             # Path does not point to an existing file
             print(f"\nFile error: {error}")
