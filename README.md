@@ -1,111 +1,332 @@
-## Group Members
--u3281913
--u3293786
-
-## Stages
-- Stage 1: Exploratory Data Analysis
-- Stage 2: Predictive Analytics / Classification
-- Stage 3: Application Deployment
-
-## Main Classes
-- DatasetIndexer
-- EDAService
-- ImagePreprocessor
-- ClassifierService
-- WorkflowService
-- ConsoleApp
-- MacroApp
-
-## Testing
-Testing evidence is documented in MANUAL_TESTING.md.
-
-## Acknowledgement
-Some image loading, preprocessing, visualisation, and classification techniques were adapted from ST1 Week 5–8 tutorial/lab activities and modified for this project.
-
 # Macroinvertebrate Image Analysis System
 
-This project builds a baseline image classification pipeline for freshwater
-macroinvertebrate taxa.
+## Project Goal
 
-The system supports:
-- Dataset indexing from class folders
-- Exploratory Data Analysis (EDA) outputs
-- Baseline model training and evaluation
-- Single-image prediction
-- Two interfaces: console menu and Tkinter GUI
+This project is a Python-based image analysis system for freshwater macroinvertebrate images. The system indexes image data, performs exploratory data analysis, trains a baseline image classifier, and provides user interaction through both a menu-driven console application and a Tkinter GUI.
 
-## Project Layout
+The project was developed for Software Technology 1 (8995), Assignment 3.
 
-.
-|- data/raw/                       # Input dataset arranged by class folder
-|- outputs/eda/                    # EDA CSV files and charts
-|- outputs/models/                 # Trained model (.joblib)
-|- outputs/reports/                # Classification report outputs
-|- src/
-|  |- app.py                       # Tkinter GUI entry point
-|  |- console_app.py               # Menu-driven console app
-|  |- main.py                      # Full pipeline entry point
-|  |- config.py                    # Paths and constants
-|  `- services/                    # Workflow, EDA, indexing, model services
-|- requirements.txt                # Python dependencies
-`- README.md
+## Group Members
 
-## Requirements
+| Student ID | Main Role |
+|---|---|
+| u3281913 | Technical implementation, EDA, classification, integration |
+| u3293786 | Documentation, testing, review, presentation preparation |
 
-- Python 3.10+
-- pip
+## Main Features
 
-Install dependencies:
+- Dataset indexing from class-based image folders
+- Dataset summary generation
+- Class distribution analysis
+- Image size distribution analysis
+- Representative sample image grid
+- Image preprocessing for machine learning
+- Baseline image classification using RandomForestClassifier
+- Class imbalance handling using `class_weight="balanced"`
+- Model evaluation using accuracy, classification report, and confusion matrix
+- Saved trained model using Joblib
+- Menu-driven console application
+- Tkinter GUI with image preview, prediction, and confidence score
 
-python -m pip install -r requirements.txt
+## Project Stages
 
-## Dataset Format
+### Stage 1: Exploratory Data Analysis
 
-Place images under class directories inside data/raw:
+Stage 1 indexes the image dataset and generates useful EDA outputs.
 
-data/raw/
-|- Class_A/
-|  |- img1.jpg
-|  `- img2.png
-`- Class_B/
-	`- img3.jpeg
+The system creates:
 
-Supported image extensions are:
-- .jpg
-- .jpeg
-- .png
-- .bmp
+- `dataset_index.csv`
+- `dataset_summary.csv`
+- `class_counts.csv`
+- `class_distribution.png`
+- `image_size_distribution.png`
+- `sample_grid.png`
 
-## How to Run
+The EDA helps identify class imbalance and inconsistent image sizes. These findings inform the Stage 2 design, including image resizing and balanced class weighting.
 
-From the repository root:
+### Stage 2: Predictive Analytics / Classification
 
-1. Run full pipeline (EDA + training)
+Stage 2 trains a baseline image classifier.
 
-python -m src.main
+Image preprocessing pipeline:
 
-2. Run interactive console app
+```text
+Raw image
+→ greyscale
+→ resize to 128x128
+→ normalise pixel values to 0–1
+→ flatten into a numeric feature vector
+→ train RandomForestClassifier
+```
 
-python -m src.console_app
+The classifier uses:
 
-3. Run GUI app
-
-python -m src.app
-
-## What Gets Generated
-
-After running EDA and training, generated files are saved under outputs/.
-
-Typical artifacts include:
-- Dataset index CSV
-- Dataset summary CSV
-- Class counts CSV
-- EDA charts
-- Trained model file (macro_classifier.joblib)
+- `RandomForestClassifier`
+- `class_weight="balanced"`
+- Train/test split
+- Accuracy score
 - Classification report
+- Confusion matrix
+- Joblib model saving
+
+### Stage 3: Application Deployment
+
+Stage 3 provides two user interfaces:
+
+1. A menu-driven console application
+2. A Tkinter GUI application
+
+The console application allows users to:
+
+- Show dataset summary
+- Generate EDA outputs
+- Train the classifier
+- Predict an image
+- Run the full pipeline
+- Exit the program
+
+The GUI allows users to:
+
+- Choose an image
+- Preview the selected image
+- Predict the macroinvertebrate class
+- View the prediction confidence score
+
+## Python Packages Used
+
+| Package | Purpose |
+|---|---|
+| `pathlib` | File and folder path handling |
+| `pandas` | Dataset indexing and summary tables |
+| `numpy` | Numeric arrays and model feature vectors |
+| `opencv-python` | Image loading, greyscale conversion, resizing, and preprocessing |
+| `matplotlib` | EDA and evaluation chart generation |
+| `seaborn` | Class distribution and confusion matrix visualisation |
+| `scikit-learn` | Train/test split, RandomForestClassifier, and evaluation metrics |
+| `joblib` | Saving and loading trained models |
+| `Pillow` | Image display in the Tkinter GUI |
+| `tkinter` | Desktop GUI application |
+
+## Folder Structure
+
+```text
+macro_project/
+|-- data/
+|   |-- raw/
+|
+|-- outputs/
+|   |-- eda/
+|   |-- models/
+|   |-- reports/
+|
+|-- src/
+|   |-- config.py
+|   |-- main.py
+|   |-- app.py
+|   |-- console_app.py
+|   |
+|   |-- models/
+|   |   |-- records.py
+|   |
+|   |-- services/
+|       |-- dataset_indexer.py
+|       |-- eda_service.py
+|       |-- image_preprocessor.py
+|       |-- classifier_service.py
+|       |-- workflow_service.py
+|
+|-- README.md
+|-- requirements.txt
+|-- MANUAL_TESTING.md
+|-- Implementation_Summary.md
+```
+
+## Dataset Setup
+
+Place the unzipped dataset inside:
+
+```text
+data/raw/
+```
+
+The dataset should be organised by class folders:
+
+```text
+data/raw/
+|-- Class_1/
+|   |-- image1.jpg
+|   |-- image2.jpg
+|
+|-- Class_2/
+|   |-- image1.jpg
+|   |-- image2.jpg
+```
+
+Each folder name is used as the image label.
+
+Example:
+
+```text
+data/raw/
+|-- Gammarus sp/
+|-- Asellus sp/
+|-- Leptophlebiidae sp/
+```
+
+## Installation Instructions
+
+### 1. Clone the repository
+
+```bash
+git clone <repository-link>
+cd macro_project
+```
+
+### 2. Create a virtual environment
+
+#### Windows
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate
+```
+
+#### Mac / Linux
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### 3. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+## How to Run Stage 1 and Stage 2
+
+Run the full pipeline:
+
+```bash
+python -m src.main
+```
+
+This command runs:
+
+```text
+Stage 1: EDA generation
+Stage 2: Model training and evaluation
+```
+
+Expected generated outputs:
+
+```text
+outputs/eda/
+outputs/models/
+outputs/reports/
+```
+
+## How to Run the Console Application
+
+```bash
+python -m src.console_app
+```
+
+Console menu:
+
+```text
+1. Show dataset summary
+2. Generate EDA outputs
+3. Train classifier
+4. Predict an image
+5. Run full pipeline
+6. Exit
+```
+
+## How to Run the GUI Application
+
+```bash
+python -m src.app
+```
+
+GUI workflow:
+
+```text
+Choose Image
+→ Preview Image
+→ Predict
+→ View predicted class and confidence score
+```
+
+## Generated Outputs
+
+After running the system, the following outputs may be generated:
+
+```text
+outputs/eda/dataset_index.csv
+outputs/eda/dataset_summary.csv
+outputs/eda/class_counts.csv
+outputs/eda/class_distribution.png
+outputs/eda/image_size_distribution.png
+outputs/eda/sample_grid.png
+
+outputs/models/macro_classifier.joblib
+
+outputs/reports/classification_report.txt
+outputs/reports/confusion_matrix.png
+```
+
+## Main Classes
+
+| Class | Responsibility |
+|---|---|
+| `ImageRecord` | Stores metadata for one indexed image |
+| `DatasetIndexer` | Scans dataset folders and builds a structured DataFrame |
+| `EDAService` | Generates dataset summaries, class charts, image size charts, and sample grids |
+| `ImagePreprocessor` | Converts raw images into model-ready numeric features |
+| `ClassifierService` | Trains, evaluates, saves, and loads the classifier |
+| `WorkflowService` | Coordinates Stage 1, Stage 2, and prediction workflows |
+| `ConsoleApp` | Provides menu-driven console interaction |
+| `MacroApp` | Provides Tkinter GUI interaction |
+
+## Testing
+
+Manual testing evidence is recorded in:
+
+```text
+MANUAL_TESTING.md
+```
+
+The testing covers:
+
+- Dataset summary generation
+- EDA output generation
+- Model training
+- Valid image prediction
+- Invalid image path handling
+- Unsupported file type handling
+- Invalid menu option handling
+- GUI image selection and prediction
 
 ## Notes
 
-- Paths and global settings are defined in src/config.py.
-- IMAGE_SIZE is currently configured as (128, 128).
-- If prediction fails, ensure the model has been trained first.
+The `data/`, `outputs/`, and trained model files should not normally be committed to GitHub because they can be large or generated locally.
+
+Recommended `.gitignore` entries:
+
+```gitignore
+data/
+outputs/
+*.joblib
+*.pkl
+*.h5
+*.keras
+__pycache__/
+*.pyc
+```
+
+## Acknowledgement
+
+Some image loading, preprocessing, visualisation, and classification techniques were adapted from ST1 Week 5 to Week 8 tutorial and lab activities. The code was modified and integrated into a modular object-oriented project structure for this Assignment 3 project.
