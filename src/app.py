@@ -166,40 +166,55 @@ class MacroApp(tk.Tk):
         # Show prediction view on initial load
         self._show_prediction_view()
 
-        # Container frame that holds all workflow action buttons in the navbar
+        # Container frame that holds grouped workflow action buttons in the navbar
         self.button_frame = tk.Frame(self.navbar_frame)
         self.button_frame.pack(fill="x")
 
-        # Button to show dataset summary statistics
-        self.summary_button = tk.Button(
+        # EDA section
+        self.eda_section_label = tk.Label(
             self.button_frame,
-            text="Show Dataset Summary",
-            width=22,
-            command=self.show_summary,
+            text="EDA",
+            font=("Arial", 10, "bold"),
+            anchor="w",
         )
-        self.summary_button.pack(fill="x", pady=4)
+        self.eda_section_label.pack(fill="x", pady=(0, 4))
+
+        self.eda_section_frame = tk.Frame(self.button_frame)
+        self.eda_section_frame.pack(fill="x", pady=(0, 10))
 
         # Button to generate EDA outputs
         self.eda_button = tk.Button(
-            self.button_frame,
+            self.eda_section_frame,
             text="Generate EDA Outputs",
             width=22,
             command=self.generate_eda,
         )
         self.eda_button.pack(fill="x", pady=4)
 
-        # Button to open EDA output folder
-        self.open_eda_button = tk.Button(
-            self.button_frame,
-            text="Open EDA Folder",
+        # Button to view previously generated EDA outputs in the UI
+        self.view_eda_button = tk.Button(
+            self.eda_section_frame,
+            text="View EDA Output",
             width=22,
-            command=self.open_eda_folder,
+            command=self.view_eda_output,
         )
-        self.open_eda_button.pack(fill="x", pady=4)
+        self.view_eda_button.pack(fill="x", pady=4)
+
+        # Prediction section
+        self.prediction_section_label = tk.Label(
+            self.button_frame,
+            text="Prediction",
+            font=("Arial", 10, "bold"),
+            anchor="w",
+        )
+        self.prediction_section_label.pack(fill="x", pady=(0, 4))
+
+        self.prediction_section_frame = tk.Frame(self.button_frame)
+        self.prediction_section_frame.pack(fill="x", pady=(0, 10))
 
         # Button to open a file-picker dialog
         self.choose_button = tk.Button(
-            self.button_frame,
+            self.prediction_section_frame,
             text="Choose Image",
             width=22,
             command=self.choose_image,
@@ -208,16 +223,28 @@ class MacroApp(tk.Tk):
 
         # Button to classify the currently selected image
         self.predict_button = tk.Button(
-            self.button_frame,
+            self.prediction_section_frame,
             text="Predict Single Image",
             width=22,
             command=self.predict_image,
         )
         self.predict_button.pack(fill="x", pady=4)
 
+        # Training and reports section
+        self.model_section_label = tk.Label(
+            self.button_frame,
+            text="Training And Reports",
+            font=("Arial", 10, "bold"),
+            anchor="w",
+        )
+        self.model_section_label.pack(fill="x", pady=(0, 4))
+
+        self.model_section_frame = tk.Frame(self.button_frame)
+        self.model_section_frame.pack(fill="x", pady=(0, 10))
+
         # Button to retrain the model from scratch
         self.train_button = tk.Button(
-            self.button_frame,
+            self.model_section_frame,
             text="Train Model",
             width=22,
             command=self.train_model,
@@ -226,7 +253,7 @@ class MacroApp(tk.Tk):
 
         # Button to open the saved classification report
         self.report_button = tk.Button(
-            self.button_frame,
+            self.model_section_frame,
             text="View Classification Report",
             width=22,
             command=self.view_classification_report,
@@ -235,16 +262,28 @@ class MacroApp(tk.Tk):
 
         # Button to open the saved confusion matrix image
         self.confusion_button = tk.Button(
-            self.button_frame,
+            self.model_section_frame,
             text="View Confusion Matrix",
             width=22,
             command=self.view_confusion_matrix,
         )
         self.confusion_button.pack(fill="x", pady=4)
 
+        # Pipeline section
+        self.pipeline_section_label = tk.Label(
+            self.button_frame,
+            text="Pipeline",
+            font=("Arial", 10, "bold"),
+            anchor="w",
+        )
+        self.pipeline_section_label.pack(fill="x", pady=(0, 4))
+
+        self.pipeline_section_frame = tk.Frame(self.button_frame)
+        self.pipeline_section_frame.pack(fill="x")
+
         # Button to run the full project workflow in sequence
         self.pipeline_button = tk.Button(
-            self.button_frame,
+            self.pipeline_section_frame,
             text="Run Full Pipeline",
             width=22,
             command=self.run_full_pipeline,
@@ -489,30 +528,9 @@ class MacroApp(tk.Tk):
             self.update_idletasks()
             self.workflow_service.generate_eda()
 
-            generated_files = [
-                EDA_OUTPUT_DIR / "dataset_summary.csv",
-                EDA_OUTPUT_DIR / "class_counts.csv",
-                EDA_OUTPUT_DIR / "class_distribution.png",
-                EDA_OUTPUT_DIR / "image_size_distribution.png",
-                EDA_OUTPUT_DIR / "sample_grid.png",
-            ]
-            available = [file_path.name for file_path in generated_files if file_path.exists()]
-            body_text = "EDA outputs generated successfully.\n\nAvailable files:\n"
-            body_text += "\n".join(f"- {name}" for name in available) if available else "No files found yet."
-
-            eda_options = {
-                "Dataset Summary (CSV)": (EDA_OUTPUT_DIR / "dataset_summary.csv", "csv"),
-                "Class Counts (CSV)": (EDA_OUTPUT_DIR / "class_counts.csv", "csv"),
-                "Class Distribution": (EDA_OUTPUT_DIR / "class_distribution.png", "image"),
-                "Image Size Distribution": (EDA_OUTPUT_DIR / "image_size_distribution.png", "image"),
-                "Sample Grid": (EDA_OUTPUT_DIR / "sample_grid.png", "image"),
-            }
-            available_eda_options = {
-                name: option for name, option in eda_options.items() if option[0].exists()
-            }
-
-            image_options = [option[0] for option in available_eda_options.values() if option[1] == "image"]
-            chart_path = image_options[0] if image_options else None
+            body_text, available_eda_options, chart_path = self._build_eda_view_payload(
+                "EDA outputs generated successfully."
+            )
             self._show_output_view(
                 "EDA Outputs",
                 body_text,
@@ -525,6 +543,65 @@ class MacroApp(tk.Tk):
         except Exception as error:
             messagebox.showerror("EDA error", str(error))
             self.status_label.configure(text="Status: EDA generation failed")
+
+    def view_eda_output(self) -> None:
+        """Show existing EDA outputs in the output panel without regenerating files."""
+        try:
+            body_text, available_eda_options, chart_path = self._build_eda_view_payload(
+                "Showing existing EDA outputs."
+            )
+
+            if not available_eda_options:
+                messagebox.showwarning(
+                    "No EDA outputs",
+                    "No EDA outputs found. Please generate EDA outputs first.",
+                )
+                self._show_output_view("EDA Outputs", body_text)
+                self.status_label.configure(text="Status: No EDA outputs found")
+                return
+
+            self._show_output_view(
+                "EDA Outputs",
+                body_text,
+                chart_path,
+                available_eda_options,
+            )
+            messagebox.showinfo("EDA Outputs", "Loaded available EDA outputs.")
+            self.status_label.configure(text="Status: EDA outputs loaded")
+        except Exception as error:
+            messagebox.showerror("EDA view error", str(error))
+            self.status_label.configure(text="Status: Failed to load EDA outputs")
+
+    def _build_eda_view_payload(
+        self,
+        intro_text: str,
+    ) -> tuple[str, dict[str, tuple[Path, str]], Path | None]:
+        """Collect EDA files and construct body text, dropdown options, and default image."""
+        generated_files = [
+            EDA_OUTPUT_DIR / "dataset_summary.csv",
+            EDA_OUTPUT_DIR / "class_counts.csv",
+            EDA_OUTPUT_DIR / "class_distribution.png",
+            EDA_OUTPUT_DIR / "image_size_distribution.png",
+            EDA_OUTPUT_DIR / "sample_grid.png",
+        ]
+        available = [file_path.name for file_path in generated_files if file_path.exists()]
+        body_text = f"{intro_text}\n\nAvailable files:\n"
+        body_text += "\n".join(f"- {name}" for name in available) if available else "No files found yet."
+
+        eda_options = {
+            "Dataset Summary (CSV)": (EDA_OUTPUT_DIR / "dataset_summary.csv", "csv"),
+            "Class Counts (CSV)": (EDA_OUTPUT_DIR / "class_counts.csv", "csv"),
+            "Class Distribution": (EDA_OUTPUT_DIR / "class_distribution.png", "image"),
+            "Image Size Distribution": (EDA_OUTPUT_DIR / "image_size_distribution.png", "image"),
+            "Sample Grid": (EDA_OUTPUT_DIR / "sample_grid.png", "image"),
+        }
+        available_eda_options = {
+            name: option for name, option in eda_options.items() if option[0].exists()
+        }
+
+        image_options = [option[0] for option in available_eda_options.values() if option[1] == "image"]
+        chart_path = image_options[0] if image_options else None
+        return body_text, available_eda_options, chart_path
 
     def open_eda_folder(self) -> None:
         """Ensure the EDA folder exists and open it in the default file browser."""
