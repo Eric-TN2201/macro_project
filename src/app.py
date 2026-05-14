@@ -6,7 +6,6 @@
 
 from pathlib import Path
 import csv
-import webbrowser
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
@@ -14,13 +13,22 @@ from PIL import Image, ImageTk
 
 from src.config import EDA_OUTPUT_DIR, RAW_DATA_DIR, REPORT_OUTPUT_DIR, SUPPORTED_EXTENSIONS
 from src.services.workflow_service import WorkflowService
+from src.utils.dataset_helpers import (
+    list_subdirectories,
+    list_valid_images,
+    sibling_folders_with_images,
+)
+from src.utils.output_helpers import (
+    build_eda_options,
+    build_report_options,
+    filter_existing_options,
+    read_text_or_default,
+)
 
 
 class MacroApp(tk.Tk):
     """Tkinter GUI for macroinvertebrate image analysis workflows."""
 
-    # Maximum pixel dimensions for the image preview canvas
-    PREVIEW_SIZE = (520, 520)
     # Maximum pixel dimensions for charts/reports shown in the body panel
     BODY_IMAGE_SIZE = (1100, 700)
 
@@ -30,8 +38,6 @@ class MacroApp(tk.Tk):
 
         # Store reference to the service layer
         self.workflow_service = workflow_service
-        # Path of the image file chosen by the user; None until a file is picked
-        self.selected_file: str | None = None
         # User-selected class folders for multi-folder prediction workflow.
         self.selected_folders: list[str] = []
         # Keep references to PhotoImage objects so they are not garbage-collected
@@ -688,16 +694,12 @@ class MacroApp(tk.Tk):
         selected_dir = Path(selected_parent)
 
         # Case 1: selected path is a parent folder that contains class subfolders.
-        class_folders = sorted(path for path in selected_dir.iterdir() if path.is_dir())
+        class_folders = list_subdirectories(selected_dir)
         initial_selected_folder: Path | None = None
 
         # Case 2: selected path is itself a class folder; offer sibling class folders too.
         if not class_folders:
-            direct_images = [
-                path
-                for path in selected_dir.iterdir()
-                if path.is_file() and path.suffix.lower() in SUPPORTED_EXTENSIONS
-            ]
+            direct_images = list_valid_images(selected_dir, SUPPORTED_EXTENSIONS)
             if not direct_images:
                 messagebox.showwarning(
                     "No class folders",
@@ -705,15 +707,7 @@ class MacroApp(tk.Tk):
                 )
                 return
 
-            sibling_candidates = sorted(path for path in selected_dir.parent.iterdir() if path.is_dir())
-            usable_siblings = []
-            for folder in sibling_candidates:
-                has_valid_image = any(
-                    file_path.is_file() and file_path.suffix.lower() in SUPPORTED_EXTENSIONS
-                    for file_path in folder.iterdir()
-                )
-                if has_valid_image:
-                    usable_siblings.append(folder)
+            usable_siblings = sibling_folders_with_images(selected_dir, SUPPORTED_EXTENSIONS)
 
             class_folders = usable_siblings if usable_siblings else [selected_dir]
             initial_selected_folder = selected_dir
@@ -833,11 +827,7 @@ class MacroApp(tk.Tk):
                 )
                 continue
 
-            valid_images = sorted(
-                path
-                for path in class_folder.iterdir()
-                if path.is_file() and path.suffix.lower() in SUPPORTED_EXTENSIONS
-            )
+            valid_images = list_valid_images(class_folder, SUPPORTED_EXTENSIONS)
 
             if not valid_images:
                 self._add_prediction_sample_card(
@@ -854,10 +844,6 @@ class MacroApp(tk.Tk):
                 str(image_path)
             )
 
-            confidence_text = "N/A"
-            if confidence is not None:
-                confidence_text = f"{confidence:.2%}"
-
             self._add_prediction_sample_card(
                 folder_name=folder_name,
                 image_path=image_path,
@@ -866,22 +852,6 @@ class MacroApp(tk.Tk):
             )
 
         self.status_label.configure(text="Status: Completed selected-folder predictions")
-
-    def show_summary(self) -> None:
-        """Generate and display a concise dataset summary in a dialog."""
-        try:
-            summary = self.workflow_service.show_summary()
-            class_counts = self.workflow_service.load_dataframe()["label"].value_counts()
-            body_text = "Dataset Summary\n\n"
-            body_text += summary.to_string(index=False)
-            body_text += "\n\nClass Counts\n"
-            body_text += class_counts.to_string()
-            self._show_output_view("Dataset Summary", body_text)
-            messagebox.showinfo("Dataset Summary", summary.to_string(index=False))
-            self.status_label.configure(text="Status: Dataset summary generated")
-        except Exception as error:
-            messagebox.showerror("Summary error", str(error))
-            self.status_label.configure(text="Status: Summary generation failed")
 
     def generate_eda(self) -> None:
         """Generate exploratory data analysis outputs and notify the user."""
@@ -950,35 +920,12 @@ class MacroApp(tk.Tk):
         body_text = f"{intro_text}\n\nAvailable files:\n"
         body_text += "\n".join(f"- {name}" for name in available) if available else "No files found yet."
 
-        eda_options = {
-            "Dataset Summary (CSV)": (EDA_OUTPUT_DIR / "dataset_summary.csv", "csv"),
-            "Class Counts (CSV)": (EDA_OUTPUT_DIR / "class_counts.csv", "csv"),
-            "Class Distribution": (EDA_OUTPUT_DIR / "class_distribution.png", "image"),
-            "Image Size Distribution": (EDA_OUTPUT_DIR / "image_size_distribution.png", "image"),
-            "Sample Grid": (EDA_OUTPUT_DIR / "sample_grid.png", "image"),
-        }
-        available_eda_options = {
-            name: option for name, option in eda_options.items() if option[0].exists()
-        }
+        eda_options = build_eda_options(EDA_OUTPUT_DIR)
+        available_eda_options = filter_existing_options(eda_options)
 
         image_options = [option[0] for option in available_eda_options.values() if option[1] == "image"]
         chart_path = image_options[0] if image_options else None
         return body_text, available_eda_options, chart_path
-
-    def open_eda_folder(self) -> None:
-        """Ensure the EDA folder exists and open it in the default file browser."""
-        try:
-            EDA_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-            self._show_output_view(
-                "Open EDA Folder",
-                f"EDA folder is ready:\n{EDA_OUTPUT_DIR}\n\nThe folder has been opened in your system browser.",
-            )
-            webbrowser.open(EDA_OUTPUT_DIR.resolve().as_uri())
-            messagebox.showinfo("EDA folder", "Opened EDA output folder.")
-            self.status_label.configure(text="Status: Opened EDA folder")
-        except Exception as error:
-            messagebox.showerror("Open folder error", str(error))
-            self.status_label.configure(text="Status: Failed to open EDA folder")
 
     def train_model(self) -> None:
         """Train the model from the GUI."""
@@ -991,19 +938,10 @@ class MacroApp(tk.Tk):
             results = self.workflow_service.train_model()
 
             report_file = REPORT_OUTPUT_DIR / "classification_report.txt"
-            report_text = (
-                report_file.read_text(encoding="utf-8")
-                if report_file.exists()
-                else str(results["report"])
-            )
+            report_text = read_text_or_default(report_file, default=str(results["report"]))
 
-            report_options = {
-                "Classification Report": (REPORT_OUTPUT_DIR / "classification_report.txt", "text"),
-                "Confusion Report": (REPORT_OUTPUT_DIR / "confusion_matrix.png", "image"),
-            }
-            available_report_options = {
-                name: option for name, option in report_options.items() if option[0].exists()
-            }
+            report_options = build_report_options(REPORT_OUTPUT_DIR)
+            available_report_options = filter_existing_options(report_options)
             self._show_output_view(
                 "Report View",
                 report_text,
@@ -1032,14 +970,9 @@ class MacroApp(tk.Tk):
             return
 
         try:
-            report_options = {
-                "Classification Report": (REPORT_OUTPUT_DIR / "classification_report.txt", "text"),
-                "Confusion Report": (REPORT_OUTPUT_DIR / "confusion_matrix.png", "image"),
-            }
-            available_report_options = {
-                name: option for name, option in report_options.items() if option[0].exists()
-            }
-            report_text = report_file.read_text(encoding="utf-8") if report_file.exists() else ""
+            report_options = build_report_options(REPORT_OUTPUT_DIR)
+            available_report_options = filter_existing_options(report_options)
+            report_text = read_text_or_default(report_file, default="")
             self._show_output_view(
                 "Report View",
                 report_text,
@@ -1050,53 +983,6 @@ class MacroApp(tk.Tk):
         except Exception as error:
             messagebox.showerror("Report error", str(error))
             self.status_label.configure(text="Status: Failed to load report view")
-
-    def view_confusion_matrix(self) -> None:
-        """Open the saved confusion matrix image if it exists."""
-        confusion_file = REPORT_OUTPUT_DIR / "confusion_matrix.png"
-        if not confusion_file.exists():
-            messagebox.showwarning(
-                "Confusion matrix not found",
-                "Confusion matrix not found. Please train the model first.",
-            )
-            return
-
-        try:
-            self._show_output_view(
-                "Confusion Matrix",
-                "",
-                confusion_file,
-            )
-            messagebox.showinfo("Confusion Matrix", "Loaded confusion matrix view.")
-            self.status_label.configure(text="Status: Loaded confusion matrix view")
-        except Exception as error:
-            messagebox.showerror("Confusion matrix error", str(error))
-            self.status_label.configure(text="Status: Failed to load confusion matrix view")
-
-    def run_full_pipeline(self) -> None:
-        """Run summary, EDA, and model training in a single workflow."""
-        try:
-            self.status_label.configure(text="Status: Running full pipeline...")
-            self.update_idletasks()
-            self.workflow_service.run_full_pipeline()
-
-            matrix_path = REPORT_OUTPUT_DIR / "confusion_matrix.png"
-            pipeline_text = (
-                "Full pipeline completed successfully.\n\n"
-                "Stages run:\n"
-                "- Dataset summary\n"
-                "- EDA outputs\n"
-                "- Model training and evaluation\n\n"
-                f"Check generated outputs in:\n{EDA_OUTPUT_DIR}\n{REPORT_OUTPUT_DIR}"
-            )
-            self._show_output_view("Full Pipeline Results", pipeline_text, matrix_path)
-
-            messagebox.showinfo("Pipeline completed", "Full pipeline completed successfully.")
-            self.status_label.configure(text="Status: Full pipeline completed")
-        except Exception as error:
-            messagebox.showerror("Pipeline error", str(error))
-            self.status_label.configure(text="Status: Full pipeline failed")
-
 
 def main() -> None:
     """Start the GUI application."""
