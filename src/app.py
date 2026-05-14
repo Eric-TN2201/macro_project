@@ -13,17 +13,18 @@ from PIL import Image, ImageTk
 
 from src.config import EDA_OUTPUT_DIR, RAW_DATA_DIR, REPORT_OUTPUT_DIR, SUPPORTED_EXTENSIONS
 from src.services.workflow_service import WorkflowService
-from src.utils.dataset_helpers import (
+from src.utils.io.dataset_helpers import (
     list_subdirectories,
     list_valid_images,
     sibling_folders_with_images,
 )
-from src.utils.output_helpers import (
+from src.utils.io.output_helpers import (
     build_eda_options,
     build_report_options,
     filter_existing_options,
     read_text_or_default,
 )
+from src.utils.ui.dialog_helpers import select_class_folders_dialog
 
 
 class MacroApp(tk.Tk):
@@ -50,6 +51,36 @@ class MacroApp(tk.Tk):
         self.report_output_options: dict[str, tuple[Path, str]] = {}
         self.output_base_text = ""
 
+        self._setup_theme()
+
+        self.title("Macroinvertebrate Image Analysis System")
+        self.configure(bg=self.colors["app_bg"])
+        # Open maximized by default; fall back to fullscreen if needed.
+        try:
+            self.state("zoomed")
+        except tk.TclError:
+            self.attributes("-fullscreen", True)
+
+        self._build_layout()
+        self._build_prediction_view()
+        self._build_output_view()
+        self._build_navbar()
+
+        # Show prediction view on initial load
+        self._show_prediction_view()
+
+        # Status bar at the bottom of the content panel for user feedback
+        self.status_label = tk.Label(
+            self.content_frame,
+            text="Status: Ready",
+            font=("Arial", 10),
+            bg=self.colors["panel_bg"],
+            fg=self.colors["text"],
+        )
+        self.status_label.pack(pady=10)
+
+    def _setup_theme(self) -> None:
+        """Configure shared color palette and reusable button styles."""
         # Simple color palette to improve visual clarity without changing layout.
         self.colors = {
             "app_bg": "#eaf1f8",
@@ -77,14 +108,8 @@ class MacroApp(tk.Tk):
             "bd": 0,
         }
 
-        self.title("Macroinvertebrate Image Analysis System")
-        self.configure(bg=self.colors["app_bg"])
-        # Open maximized by default; fall back to fullscreen if needed.
-        try:
-            self.state("zoomed")
-        except tk.TclError:
-            self.attributes("-fullscreen", True)
-
+    def _build_layout(self) -> None:
+        """Build top-level frames shared by all UI sections."""
         # Main content area with a left navbar and right content panel
         self.main_frame = tk.Frame(self, bg=self.colors["app_bg"])
         self.main_frame.pack(fill="both", expand=True)
@@ -127,7 +152,8 @@ class MacroApp(tk.Tk):
         self.body_frame = tk.Frame(self.content_frame, bg=self.colors["panel_bg"])
         self.body_frame.pack(fill="both", expand=True)
 
-        # Prediction view (folder selection + prediction results)
+    def _build_prediction_view(self) -> None:
+        """Build prediction view widgets (folder selection + sample cards)."""
         self.prediction_view = tk.Frame(self.body_frame, bg=self.colors["panel_bg"])
 
         self.result_label = tk.Label(
@@ -139,7 +165,6 @@ class MacroApp(tk.Tk):
         )
         self.result_label.pack(pady=10)
 
-        # On-screen list of user-selected class folders.
         self.selected_folders_label = tk.Label(
             self.prediction_view,
             text="Selected class folders",
@@ -150,7 +175,6 @@ class MacroApp(tk.Tk):
         )
         self.selected_folders_label.pack(fill="x", padx=20)
 
-        # Main-view action button for selecting class folders.
         self.add_folder_button = tk.Button(
             self.prediction_view,
             text="Select Class Folders",
@@ -170,7 +194,6 @@ class MacroApp(tk.Tk):
         self.selected_folders_text.pack(fill="x", padx=20, pady=(0, 10))
         self.selected_folders_text.configure(state="disabled")
 
-        # Visual cards area to show sample image + prediction details for each class folder.
         self.sample_cards_label = tk.Label(
             self.prediction_view,
             text="Sample prediction cards",
@@ -209,7 +232,6 @@ class MacroApp(tk.Tk):
         self.sample_cards_inner.bind("<Configure>", self._on_sample_cards_inner_configure)
         self.sample_cards_canvas.bind("<Configure>", self._on_sample_cards_canvas_configure)
 
-        # Main-view action button for running predictions on selected folders.
         self.predict_selected_main_button = tk.Button(
             self.prediction_view,
             text="Predict Selected Folders",
@@ -221,10 +243,10 @@ class MacroApp(tk.Tk):
 
         self._update_selected_folders_display()
 
-        # Output view (summary/report text + optional chart image)
+    def _build_output_view(self) -> None:
+        """Build output view widgets (text, image, and selectors)."""
         self.output_view = tk.Frame(self.body_frame, bg=self.colors["panel_bg"])
 
-        # Fixed header keeps title on the left and options on the top-right.
         self.output_header_frame = tk.Frame(self.output_view, bg=self.colors["panel_bg"])
         self.output_header_frame.pack(fill="x", pady=(0, 8))
 
@@ -240,11 +262,15 @@ class MacroApp(tk.Tk):
         self.header_controls_frame = tk.Frame(self.output_header_frame, bg=self.colors["panel_bg"])
         self.header_controls_frame.pack(side="right", anchor="e")
 
-        # EDA controls (shown only on EDA view)
         self.eda_option_var = tk.StringVar(value="Select EDA output")
         self.eda_option_var.trace_add("write", self._on_eda_option_change)
         self.eda_control_frame = tk.Frame(self.header_controls_frame, bg=self.colors["panel_bg"])
-        self.eda_label = tk.Label(self.eda_control_frame, text="EDA View:", bg=self.colors["panel_bg"], fg=self.colors["text"])
+        self.eda_label = tk.Label(
+            self.eda_control_frame,
+            text="EDA View:",
+            bg=self.colors["panel_bg"],
+            fg=self.colors["text"],
+        )
         self.eda_label.pack(side="left", padx=(0, 8))
         self.eda_dropdown = tk.OptionMenu(self.eda_control_frame, self.eda_option_var, "Select EDA output")
         self.eda_dropdown.configure(width=28, bg="#ffffff", fg=self.colors["text"], highlightthickness=0)
@@ -252,11 +278,15 @@ class MacroApp(tk.Tk):
         self.eda_dropdown.pack(side="left")
         self.eda_dropdown.configure(state="disabled")
 
-        # Report controls (shown only on report view)
         self.report_option_var = tk.StringVar(value="Select report output")
         self.report_option_var.trace_add("write", self._on_report_option_change)
         self.report_control_frame = tk.Frame(self.header_controls_frame, bg=self.colors["panel_bg"])
-        self.report_label = tk.Label(self.report_control_frame, text="Report View:", bg=self.colors["panel_bg"], fg=self.colors["text"])
+        self.report_label = tk.Label(
+            self.report_control_frame,
+            text="Report View:",
+            bg=self.colors["panel_bg"],
+            fg=self.colors["text"],
+        )
         self.report_label.pack(side="left", padx=(0, 8))
         self.report_dropdown = tk.OptionMenu(
             self.report_control_frame,
@@ -281,7 +311,6 @@ class MacroApp(tk.Tk):
         self.output_text.pack(fill="both", expand=True, pady=(0, 10))
         self.output_text.configure(state="disabled")
 
-        # Table area for CSV previews.
         self.csv_table_frame = tk.Frame(self.output_view, bg=self.colors["panel_bg"])
         self.csv_table = ttk.Treeview(self.csv_table_frame, show="headings")
         self.csv_scroll_y = ttk.Scrollbar(
@@ -307,14 +336,11 @@ class MacroApp(tk.Tk):
         self.output_image_label = tk.Label(self.output_view, bg=self.colors["panel_bg"])
         self.output_image_label.pack()
 
-        # Show prediction view on initial load
-        self._show_prediction_view()
-
-        # Container frame that holds grouped workflow action buttons in the navbar
+    def _build_navbar(self) -> None:
+        """Build grouped action buttons in the left navigation panel."""
         self.button_frame = tk.Frame(self.navbar_frame, bg=self.colors["nav_bg"])
         self.button_frame.pack(fill="x")
 
-        # Prediction section
         self.prediction_section_label = tk.Label(
             self.button_frame,
             text="Prediction",
@@ -337,7 +363,6 @@ class MacroApp(tk.Tk):
         )
         self.predict_view_button.pack(fill="x", pady=4)
 
-        # EDA section
         self.eda_section_label = tk.Label(
             self.button_frame,
             text="EDA",
@@ -351,7 +376,6 @@ class MacroApp(tk.Tk):
         self.eda_section_frame = tk.Frame(self.button_frame, bg=self.colors["nav_bg"])
         self.eda_section_frame.pack(fill="x", pady=(0, 10))
 
-        # Button to generate EDA outputs
         self.eda_button = tk.Button(
             self.eda_section_frame,
             text="Generate EDA Outputs",
@@ -361,7 +385,6 @@ class MacroApp(tk.Tk):
         )
         self.eda_button.pack(fill="x", pady=4)
 
-        # Button to view previously generated EDA outputs in the UI
         self.view_eda_button = tk.Button(
             self.eda_section_frame,
             text="View EDA Output",
@@ -371,7 +394,6 @@ class MacroApp(tk.Tk):
         )
         self.view_eda_button.pack(fill="x", pady=4)
 
-        # Training and reports section
         self.model_section_label = tk.Label(
             self.button_frame,
             text="Training And Reports",
@@ -385,7 +407,6 @@ class MacroApp(tk.Tk):
         self.model_section_frame = tk.Frame(self.button_frame, bg=self.colors["nav_bg"])
         self.model_section_frame.pack(fill="x", pady=(0, 10))
 
-        # Button to retrain the model from scratch
         self.train_button = tk.Button(
             self.model_section_frame,
             text="Train Model",
@@ -403,16 +424,6 @@ class MacroApp(tk.Tk):
             **self.nav_button_style,
         )
         self.report_view_button.pack(fill="x", pady=4)
-
-        # Status bar at the bottom of the content panel for user feedback
-        self.status_label = tk.Label(
-            self.content_frame,
-            text="Status: Ready",
-            font=("Arial", 10),
-            bg=self.colors["panel_bg"],
-            fg=self.colors["text"],
-        )
-        self.status_label.pack(pady=10)
 
     def _show_prediction_view(self) -> None:
         """Display the prediction-focused body view."""
@@ -507,6 +518,7 @@ class MacroApp(tk.Tk):
             self.eda_control_frame.pack(side="right", anchor="e")
             self.eda_dropdown.configure(state="normal")
         else:
+            # Keep dropdown inert when the current output view is not EDA-related.
             self.eda_output_options.clear()
             self.eda_control_frame.pack_forget()
             self.eda_dropdown.configure(state="disabled")
@@ -520,6 +532,7 @@ class MacroApp(tk.Tk):
             self.report_control_frame.pack(side="right", anchor="e")
             self.report_dropdown.configure(state="normal")
         else:
+            # Keep dropdown inert when the current output view is not report-related.
             self.report_output_options.clear()
             self.report_control_frame.pack_forget()
             self.report_dropdown.configure(state="disabled")
@@ -667,6 +680,7 @@ class MacroApp(tk.Tk):
 
         output_path, output_type = option_data
         if output_type == "text":
+            # Report text mode: show text pane and hide image content.
             report_text = output_path.read_text(encoding="utf-8") if output_path.exists() else "Report file not found."
             self._clear_csv_table()
             self.csv_table_frame.pack_forget()
@@ -675,6 +689,7 @@ class MacroApp(tk.Tk):
             self._update_output_text(report_text)
             return
 
+        # Image mode (confusion report): hide text pane to focus on matrix image.
         self._clear_csv_table()
         self.csv_table_frame.pack_forget()
         self.output_text.pack_forget()
@@ -719,75 +734,14 @@ class MacroApp(tk.Tk):
             )
             return
 
-        # Multi-select dialog for choosing class folders in one step.
-        selected_paths: list[str] = []
-        selector = tk.Toplevel(self)
-        selector.title("Select class folders")
-        dialog_width = 520
-        dialog_height = 420
-        position_x = (self.winfo_screenwidth() - dialog_width) // 2
-        position_y = (self.winfo_screenheight() - dialog_height) // 2
-        selector.geometry(f"{dialog_width}x{dialog_height}+{position_x}+{position_y}")
-        selector.transient(self)
-        selector.grab_set()
-
-        instruction = tk.Label(
-            selector,
-            text=(
-                "Select one or more class folders (Ctrl/Shift for multi-select):\n"
-                f"Source: {selected_dir}"
-            ),
-            anchor="w",
-            justify="left",
+        selected_paths = select_class_folders_dialog(
+            parent=self,
+            source_dir=selected_dir,
+            class_folders=class_folders,
+            initial_selected_folder=initial_selected_folder,
         )
-        instruction.pack(fill="x", padx=12, pady=(12, 6))
 
-        list_frame = tk.Frame(selector)
-        list_frame.pack(fill="both", expand=True, padx=12, pady=(0, 10))
-
-        folder_listbox = tk.Listbox(list_frame, selectmode=tk.EXTENDED)
-        folder_scrollbar = tk.Scrollbar(list_frame, orient="vertical", command=folder_listbox.yview)
-        folder_listbox.configure(yscrollcommand=folder_scrollbar.set)
-        folder_listbox.pack(side="left", fill="both", expand=True)
-        folder_scrollbar.pack(side="right", fill="y")
-
-        for folder in class_folders:
-            folder_listbox.insert(tk.END, folder.name)
-
-        # If user picked a direct class folder, preselect it in the list for convenience.
-        if initial_selected_folder is not None:
-            for index, folder in enumerate(class_folders):
-                if folder == initial_selected_folder:
-                    folder_listbox.selection_set(index)
-                    folder_listbox.see(index)
-                    break
-
-        button_frame = tk.Frame(selector)
-        button_frame.pack(fill="x", padx=12, pady=(0, 12))
-
-        def _confirm_selection() -> None:
-            indices = folder_listbox.curselection()
-            if not indices:
-                messagebox.showwarning(
-                    "No folders selected",
-                    "Please select at least one class folder.",
-                    parent=selector,
-                )
-                return
-
-            selected_paths.extend(str(class_folders[index]) for index in indices)
-            selector.destroy()
-
-        def _cancel_selection() -> None:
-            selector.destroy()
-
-        confirm_button = tk.Button(button_frame, text="Confirm", width=12, command=_confirm_selection)
-        confirm_button.pack(side="right", padx=(8, 0))
-        cancel_button = tk.Button(button_frame, text="Cancel", width=12, command=_cancel_selection)
-        cancel_button.pack(side="right")
-
-        self.wait_window(selector)
-
+        # Empty result means user canceled or closed the picker.
         if not selected_paths:
             return
 
@@ -839,6 +793,7 @@ class MacroApp(tk.Tk):
                 )
                 continue
 
+            # Use the first valid file so results stay deterministic across runs.
             image_path = valid_images[0]
             prediction, confidence = self.workflow_service.predict_image_with_confidence(
                 str(image_path)
