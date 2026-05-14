@@ -253,6 +253,26 @@ class MacroApp(tk.Tk):
         self.button_frame = tk.Frame(self.navbar_frame)
         self.button_frame.pack(fill="x")
 
+        # Prediction section
+        self.prediction_section_label = tk.Label(
+            self.button_frame,
+            text="Prediction",
+            font=("Arial", 10, "bold"),
+            anchor="w",
+        )
+        self.prediction_section_label.pack(fill="x", pady=(0, 4))
+
+        self.prediction_section_frame = tk.Frame(self.button_frame)
+        self.prediction_section_frame.pack(fill="x", pady=(0, 10))
+
+        self.predict_view_button = tk.Button(
+            self.prediction_section_frame,
+            text="Predict View",
+            width=22,
+            command=self._show_prediction_view,
+        )
+        self.predict_view_button.pack(fill="x", pady=4)
+
         # EDA section
         self.eda_section_label = tk.Label(
             self.button_frame,
