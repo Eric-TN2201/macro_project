@@ -40,6 +40,8 @@ class MacroApp(tk.Tk):
         self.prediction_sample_images: list[ImageTk.PhotoImage] = []
         # Store available EDA output options (label -> (path, type)).
         self.eda_output_options: dict[str, tuple[Path, str]] = {}
+        # Store available report output options (label -> (path, type)).
+        self.report_output_options: dict[str, tuple[Path, str]] = {}
         self.output_base_text = ""
 
         self.title("Macroinvertebrate Image Analysis System")
@@ -179,17 +181,34 @@ class MacroApp(tk.Tk):
         )
         self.output_title_label.pack(side="left", anchor="w")
 
-        # EDA controls (shown only on the EDA output screen)
+        self.header_controls_frame = tk.Frame(self.output_header_frame)
+        self.header_controls_frame.pack(side="right", anchor="e")
+
+        # EDA controls (shown only on EDA view)
         self.eda_option_var = tk.StringVar(value="Select EDA output")
         self.eda_option_var.trace_add("write", self._on_eda_option_change)
-        self.eda_control_frame = tk.Frame(self.output_header_frame)
-        self.eda_control_frame.pack(side="right", anchor="e")
+        self.eda_control_frame = tk.Frame(self.header_controls_frame)
         self.eda_label = tk.Label(self.eda_control_frame, text="EDA View:")
         self.eda_label.pack(side="left", padx=(0, 8))
         self.eda_dropdown = tk.OptionMenu(self.eda_control_frame, self.eda_option_var, "Select EDA output")
         self.eda_dropdown.configure(width=28)
         self.eda_dropdown.pack(side="left")
         self.eda_dropdown.configure(state="disabled")
+
+        # Report controls (shown only on report view)
+        self.report_option_var = tk.StringVar(value="Select report output")
+        self.report_option_var.trace_add("write", self._on_report_option_change)
+        self.report_control_frame = tk.Frame(self.header_controls_frame)
+        self.report_label = tk.Label(self.report_control_frame, text="Report View:")
+        self.report_label.pack(side="left", padx=(0, 8))
+        self.report_dropdown = tk.OptionMenu(
+            self.report_control_frame,
+            self.report_option_var,
+            "Select report output",
+        )
+        self.report_dropdown.configure(width=28)
+        self.report_dropdown.pack(side="left")
+        self.report_dropdown.configure(state="disabled")
 
         self.output_text = tk.Text(
             self.output_view,
@@ -264,18 +283,6 @@ class MacroApp(tk.Tk):
         )
         self.view_eda_button.pack(fill="x", pady=4)
 
-        # Prediction section
-        self.prediction_section_label = tk.Label(
-            self.button_frame,
-            text="Prediction",
-            font=("Arial", 10, "bold"),
-            anchor="w",
-        )
-        self.prediction_section_label.pack(fill="x", pady=(0, 4))
-
-        self.prediction_section_frame = tk.Frame(self.button_frame)
-        self.prediction_section_frame.pack(fill="x", pady=(0, 10))
-
         # Training and reports section
         self.model_section_label = tk.Label(
             self.button_frame,
@@ -297,44 +304,13 @@ class MacroApp(tk.Tk):
         )
         self.train_button.pack(fill="x", pady=4)
 
-        # Button to open the saved classification report
-        self.report_button = tk.Button(
+        self.report_view_button = tk.Button(
             self.model_section_frame,
-            text="View Classification Report",
+            text="Report View",
             width=22,
             command=self.view_classification_report,
         )
-        self.report_button.pack(fill="x", pady=4)
-
-        # Button to open the saved confusion matrix image
-        self.confusion_button = tk.Button(
-            self.model_section_frame,
-            text="View Confusion Matrix",
-            width=22,
-            command=self.view_confusion_matrix,
-        )
-        self.confusion_button.pack(fill="x", pady=4)
-
-        # Pipeline section
-        self.pipeline_section_label = tk.Label(
-            self.button_frame,
-            text="Pipeline",
-            font=("Arial", 10, "bold"),
-            anchor="w",
-        )
-        self.pipeline_section_label.pack(fill="x", pady=(0, 4))
-
-        self.pipeline_section_frame = tk.Frame(self.button_frame)
-        self.pipeline_section_frame.pack(fill="x")
-
-        # Button to run the full project workflow in sequence
-        self.pipeline_button = tk.Button(
-            self.pipeline_section_frame,
-            text="Run Full Pipeline",
-            width=22,
-            command=self.run_full_pipeline,
-        )
-        self.pipeline_button.pack(fill="x", pady=4)
+        self.report_view_button.pack(fill="x", pady=4)
 
         # Status bar at the bottom of the content panel for user feedback
         self.status_label = tk.Label(
@@ -423,6 +399,7 @@ class MacroApp(tk.Tk):
         body_text: str,
         image_path: Path | None = None,
         eda_options: dict[str, tuple[Path, str]] | None = None,
+        report_options: dict[str, tuple[Path, str]] | None = None,
     ) -> None:
         """Display text output and optionally an image in the body panel."""
         self.prediction_view.pack_forget()
@@ -433,14 +410,29 @@ class MacroApp(tk.Tk):
 
         if eda_options:
             self._set_eda_options(eda_options)
+            self.eda_control_frame.pack(side="right", anchor="e")
             self.eda_dropdown.configure(state="normal")
         else:
             self.eda_output_options.clear()
+            self.eda_control_frame.pack_forget()
             self.eda_dropdown.configure(state="disabled")
             self.eda_option_var.set("N/A")
             menu = self.eda_dropdown["menu"]
             menu.delete(0, "end")
             menu.add_command(label="N/A", command=tk._setit(self.eda_option_var, "N/A"))
+
+        if report_options:
+            self._set_report_options(report_options)
+            self.report_control_frame.pack(side="right", anchor="e")
+            self.report_dropdown.configure(state="normal")
+        else:
+            self.report_output_options.clear()
+            self.report_control_frame.pack_forget()
+            self.report_dropdown.configure(state="disabled")
+            self.report_option_var.set("N/A")
+            report_menu = self.report_dropdown["menu"]
+            report_menu.delete(0, "end")
+            report_menu.add_command(label="N/A", command=tk._setit(self.report_option_var, "N/A"))
 
         self._display_body_image(image_path)
 
@@ -536,6 +528,18 @@ class MacroApp(tk.Tk):
         first_option = next(iter(options), "Select EDA output")
         self.eda_option_var.set(first_option)
 
+    def _set_report_options(self, options: dict[str, tuple[Path, str]]) -> None:
+        """Populate the report dropdown with available report outputs."""
+        self.report_output_options = options
+        menu = self.report_dropdown["menu"]
+        menu.delete(0, "end")
+
+        for option_name in options:
+            menu.add_command(label=option_name, command=tk._setit(self.report_option_var, option_name))
+
+        first_option = next(iter(options), "Select report output")
+        self.report_option_var.set(first_option)
+
     def _on_eda_option_change(self, *_: object) -> None:
         """Update body content when the selected EDA dropdown option changes."""
         selected_option = self.eda_option_var.get()
@@ -558,6 +562,29 @@ class MacroApp(tk.Tk):
             f"{self.output_base_text}\n\nSelected output: {selected_option}\n"
             f"Source: {output_path.name}"
         )
+        self._display_body_image(output_path)
+
+    def _on_report_option_change(self, *_: object) -> None:
+        """Update body content when the selected report dropdown option changes."""
+        selected_option = self.report_option_var.get()
+        option_data = self.report_output_options.get(selected_option)
+        if option_data is None:
+            return
+
+        output_path, output_type = option_data
+        if output_type == "text":
+            report_text = output_path.read_text(encoding="utf-8") if output_path.exists() else "Report file not found."
+            self._clear_csv_table()
+            self.csv_table_frame.pack_forget()
+            self.output_text.pack(fill="both", expand=True, pady=(0, 10))
+            self._display_body_image(None)
+            self._update_output_text(report_text)
+            return
+
+        self._clear_csv_table()
+        self.csv_table_frame.pack_forget()
+        self.output_text.pack_forget()
+        self._update_output_text("")
         self._display_body_image(output_path)
 
     def select_class_folders(self) -> None:
@@ -875,14 +902,25 @@ class MacroApp(tk.Tk):
             # Run training through the service layer
             results = self.workflow_service.train_model()
 
-            training_text = (
-                f"Model training completed successfully.\n\n"
-                f"Accuracy: {results['accuracy']:.4f}\n\n"
-                "Classification report:\n"
-                f"{results['report']}"
+            report_file = REPORT_OUTPUT_DIR / "classification_report.txt"
+            report_text = (
+                report_file.read_text(encoding="utf-8")
+                if report_file.exists()
+                else str(results["report"])
             )
-            matrix_path = REPORT_OUTPUT_DIR / "confusion_matrix.png"
-            self._show_output_view("Training Results", training_text, matrix_path)
+
+            report_options = {
+                "Classification Report": (REPORT_OUTPUT_DIR / "classification_report.txt", "text"),
+                "Confusion Report": (REPORT_OUTPUT_DIR / "confusion_matrix.png", "image"),
+            }
+            available_report_options = {
+                name: option for name, option in report_options.items() if option[0].exists()
+            }
+            self._show_output_view(
+                "Report View",
+                report_text,
+                report_options=available_report_options,
+            )
 
             # Inform the user of the outcome with a pop-up
             messagebox.showinfo(
@@ -895,24 +933,35 @@ class MacroApp(tk.Tk):
             self.status_label.configure(text="Status: Training failed")
 
     def view_classification_report(self) -> None:
-        """Open the saved classification report if it exists."""
+        """Show report view in-app with selectable classification and confusion outputs."""
         report_file = REPORT_OUTPUT_DIR / "classification_report.txt"
-        if not report_file.exists():
+        confusion_file = REPORT_OUTPUT_DIR / "confusion_matrix.png"
+        if not report_file.exists() and not confusion_file.exists():
             messagebox.showwarning(
                 "Report not found",
-                "Classification report not found. Please train the model first.",
+                "No report outputs found. Please train the model first.",
             )
             return
 
         try:
-            report_text = report_file.read_text(encoding="utf-8")
-            self._show_output_view("Classification Report", report_text)
-            webbrowser.open(report_file.resolve().as_uri())
-            messagebox.showinfo("Classification Report", "Opened classification report.")
-            self.status_label.configure(text="Status: Opened classification report")
+            report_options = {
+                "Classification Report": (REPORT_OUTPUT_DIR / "classification_report.txt", "text"),
+                "Confusion Report": (REPORT_OUTPUT_DIR / "confusion_matrix.png", "image"),
+            }
+            available_report_options = {
+                name: option for name, option in report_options.items() if option[0].exists()
+            }
+            report_text = report_file.read_text(encoding="utf-8") if report_file.exists() else ""
+            self._show_output_view(
+                "Report View",
+                report_text,
+                report_options=available_report_options,
+            )
+            messagebox.showinfo("Report View", "Loaded report view.")
+            self.status_label.configure(text="Status: Loaded report view")
         except Exception as error:
             messagebox.showerror("Report error", str(error))
-            self.status_label.configure(text="Status: Failed to open classification report")
+            self.status_label.configure(text="Status: Failed to load report view")
 
     def view_confusion_matrix(self) -> None:
         """Open the saved confusion matrix image if it exists."""
@@ -927,15 +976,14 @@ class MacroApp(tk.Tk):
         try:
             self._show_output_view(
                 "Confusion Matrix",
-                "Confusion matrix generated from the latest model training run.",
+                "",
                 confusion_file,
             )
-            webbrowser.open(confusion_file.resolve().as_uri())
-            messagebox.showinfo("Confusion Matrix", "Opened confusion matrix.")
-            self.status_label.configure(text="Status: Opened confusion matrix")
+            messagebox.showinfo("Confusion Matrix", "Loaded confusion matrix view.")
+            self.status_label.configure(text="Status: Loaded confusion matrix view")
         except Exception as error:
             messagebox.showerror("Confusion matrix error", str(error))
-            self.status_label.configure(text="Status: Failed to open confusion matrix")
+            self.status_label.configure(text="Status: Failed to load confusion matrix view")
 
     def run_full_pipeline(self) -> None:
         """Run summary, EDA, and model training in a single workflow."""
