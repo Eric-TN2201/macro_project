@@ -44,7 +44,35 @@ class MacroApp(tk.Tk):
         self.report_output_options: dict[str, tuple[Path, str]] = {}
         self.output_base_text = ""
 
+        # Simple color palette to improve visual clarity without changing layout.
+        self.colors = {
+            "app_bg": "#eaf1f8",
+            "panel_bg": "#ffffff",
+            "nav_bg": "#1f3b57",
+            "nav_text": "#f3f7fb",
+            "accent": "#2f80c2",
+            "accent_hover": "#25689e",
+            "text": "#22313f",
+        }
+        self.nav_button_style = {
+            "bg": "#2d5478",
+            "fg": self.colors["nav_text"],
+            "activebackground": "#3b6792",
+            "activeforeground": self.colors["nav_text"],
+            "relief": "flat",
+            "bd": 0,
+        }
+        self.action_button_style = {
+            "bg": self.colors["accent"],
+            "fg": "#ffffff",
+            "activebackground": self.colors["accent_hover"],
+            "activeforeground": "#ffffff",
+            "relief": "flat",
+            "bd": 0,
+        }
+
         self.title("Macroinvertebrate Image Analysis System")
+        self.configure(bg=self.colors["app_bg"])
         # Open maximized by default; fall back to fullscreen if needed.
         try:
             self.state("zoomed")
@@ -52,22 +80,31 @@ class MacroApp(tk.Tk):
             self.attributes("-fullscreen", True)
 
         # Main content area with a left navbar and right content panel
-        self.main_frame = tk.Frame(self)
+        self.main_frame = tk.Frame(self, bg=self.colors["app_bg"])
         self.main_frame.pack(fill="both", expand=True)
 
         # Left navigation bar for all main function buttons
-        self.navbar_frame = tk.Frame(self.main_frame, bd=1, relief="groove", padx=10, pady=10)
+        self.navbar_frame = tk.Frame(
+            self.main_frame,
+            bd=0,
+            relief="flat",
+            padx=10,
+            pady=10,
+            bg=self.colors["nav_bg"],
+        )
         self.navbar_frame.pack(side="left", fill="y", padx=(10, 8), pady=10)
 
         self.navbar_title = tk.Label(
             self.navbar_frame,
             text="Functions",
             font=("Arial", 12, "bold"),
+            bg=self.colors["nav_bg"],
+            fg=self.colors["nav_text"],
         )
         self.navbar_title.pack(anchor="w", pady=(0, 10))
 
         # Right panel to display title, dynamic body content, and status
-        self.content_frame = tk.Frame(self.main_frame)
+        self.content_frame = tk.Frame(self.main_frame, bg=self.colors["panel_bg"])
         self.content_frame.pack(side="left", fill="both", expand=True, padx=(0, 10), pady=10)
 
         # Application title displayed at the top of the content panel
@@ -75,20 +112,24 @@ class MacroApp(tk.Tk):
             self.content_frame,
             text="Macroinvertebrate Image Analysis System",
             font=("Arial", 18, "bold"),
+            bg=self.colors["panel_bg"],
+            fg=self.colors["accent"],
         )
         self.title_label.pack(pady=15)
 
         # Dynamic body area; each function can switch the visible content
-        self.body_frame = tk.Frame(self.content_frame)
+        self.body_frame = tk.Frame(self.content_frame, bg=self.colors["panel_bg"])
         self.body_frame.pack(fill="both", expand=True)
 
         # Prediction view (folder selection + prediction results)
-        self.prediction_view = tk.Frame(self.body_frame)
+        self.prediction_view = tk.Frame(self.body_frame, bg=self.colors["panel_bg"])
 
         self.result_label = tk.Label(
             self.prediction_view,
             text="Prediction results",
             font=("Arial", 14),
+            bg=self.colors["panel_bg"],
+            fg=self.colors["text"],
         )
         self.result_label.pack(pady=10)
 
@@ -98,6 +139,8 @@ class MacroApp(tk.Tk):
             text="Selected class folders",
             font=("Arial", 11, "bold"),
             anchor="w",
+            bg=self.colors["panel_bg"],
+            fg=self.colors["text"],
         )
         self.selected_folders_label.pack(fill="x", padx=20)
 
@@ -107,6 +150,7 @@ class MacroApp(tk.Tk):
             text="Select Class Folders",
             width=24,
             command=self.select_class_folders,
+            **self.action_button_style,
         )
         self.add_folder_button.pack(pady=(0, 10))
 
@@ -126,10 +170,12 @@ class MacroApp(tk.Tk):
             text="Sample prediction cards",
             font=("Arial", 11, "bold"),
             anchor="w",
+            bg=self.colors["panel_bg"],
+            fg=self.colors["text"],
         )
         self.sample_cards_label.pack(fill="x", padx=20)
 
-        self.sample_cards_frame = tk.Frame(self.prediction_view)
+        self.sample_cards_frame = tk.Frame(self.prediction_view, bg=self.colors["panel_bg"])
         self.sample_cards_frame.pack(fill="both", expand=True, padx=20, pady=(0, 10))
 
         self.sample_cards_canvas = tk.Canvas(
@@ -137,6 +183,7 @@ class MacroApp(tk.Tk):
             relief="groove",
             bd=1,
             highlightthickness=0,
+            bg="#ffffff",
         )
         self.sample_cards_scrollbar = tk.Scrollbar(
             self.sample_cards_frame,
@@ -147,7 +194,7 @@ class MacroApp(tk.Tk):
         self.sample_cards_canvas.pack(side="left", fill="both", expand=True)
         self.sample_cards_scrollbar.pack(side="right", fill="y")
 
-        self.sample_cards_inner = tk.Frame(self.sample_cards_canvas)
+        self.sample_cards_inner = tk.Frame(self.sample_cards_canvas, bg="#ffffff")
         self.sample_cards_canvas_window = self.sample_cards_canvas.create_window(
             (0, 0),
             window=self.sample_cards_inner,
@@ -162,51 +209,56 @@ class MacroApp(tk.Tk):
             text="Predict Selected Folders",
             width=24,
             command=self.predict_selected_folders,
+            **self.action_button_style,
         )
         self.predict_selected_main_button.pack(pady=(0, 10))
 
         self._update_selected_folders_display()
 
         # Output view (summary/report text + optional chart image)
-        self.output_view = tk.Frame(self.body_frame)
+        self.output_view = tk.Frame(self.body_frame, bg=self.colors["panel_bg"])
 
         # Fixed header keeps title on the left and options on the top-right.
-        self.output_header_frame = tk.Frame(self.output_view)
+        self.output_header_frame = tk.Frame(self.output_view, bg=self.colors["panel_bg"])
         self.output_header_frame.pack(fill="x", pady=(0, 8))
 
         self.output_title_label = tk.Label(
             self.output_header_frame,
             text="Output",
             font=("Arial", 14, "bold"),
+            bg=self.colors["panel_bg"],
+            fg=self.colors["text"],
         )
         self.output_title_label.pack(side="left", anchor="w")
 
-        self.header_controls_frame = tk.Frame(self.output_header_frame)
+        self.header_controls_frame = tk.Frame(self.output_header_frame, bg=self.colors["panel_bg"])
         self.header_controls_frame.pack(side="right", anchor="e")
 
         # EDA controls (shown only on EDA view)
         self.eda_option_var = tk.StringVar(value="Select EDA output")
         self.eda_option_var.trace_add("write", self._on_eda_option_change)
-        self.eda_control_frame = tk.Frame(self.header_controls_frame)
-        self.eda_label = tk.Label(self.eda_control_frame, text="EDA View:")
+        self.eda_control_frame = tk.Frame(self.header_controls_frame, bg=self.colors["panel_bg"])
+        self.eda_label = tk.Label(self.eda_control_frame, text="EDA View:", bg=self.colors["panel_bg"], fg=self.colors["text"])
         self.eda_label.pack(side="left", padx=(0, 8))
         self.eda_dropdown = tk.OptionMenu(self.eda_control_frame, self.eda_option_var, "Select EDA output")
-        self.eda_dropdown.configure(width=28)
+        self.eda_dropdown.configure(width=28, bg="#ffffff", fg=self.colors["text"], highlightthickness=0)
+        self.eda_dropdown["menu"].configure(bg="#ffffff", fg=self.colors["text"])
         self.eda_dropdown.pack(side="left")
         self.eda_dropdown.configure(state="disabled")
 
         # Report controls (shown only on report view)
         self.report_option_var = tk.StringVar(value="Select report output")
         self.report_option_var.trace_add("write", self._on_report_option_change)
-        self.report_control_frame = tk.Frame(self.header_controls_frame)
-        self.report_label = tk.Label(self.report_control_frame, text="Report View:")
+        self.report_control_frame = tk.Frame(self.header_controls_frame, bg=self.colors["panel_bg"])
+        self.report_label = tk.Label(self.report_control_frame, text="Report View:", bg=self.colors["panel_bg"], fg=self.colors["text"])
         self.report_label.pack(side="left", padx=(0, 8))
         self.report_dropdown = tk.OptionMenu(
             self.report_control_frame,
             self.report_option_var,
             "Select report output",
         )
-        self.report_dropdown.configure(width=28)
+        self.report_dropdown.configure(width=28, bg="#ffffff", fg=self.colors["text"], highlightthickness=0)
+        self.report_dropdown["menu"].configure(bg="#ffffff", fg=self.colors["text"])
         self.report_dropdown.pack(side="left")
         self.report_dropdown.configure(state="disabled")
 
@@ -216,12 +268,15 @@ class MacroApp(tk.Tk):
             wrap="word",
             relief="groove",
             bd=1,
+            bg="#ffffff",
+            fg=self.colors["text"],
+            insertbackground=self.colors["text"],
         )
         self.output_text.pack(fill="both", expand=True, pady=(0, 10))
         self.output_text.configure(state="disabled")
 
         # Table area for CSV previews.
-        self.csv_table_frame = tk.Frame(self.output_view)
+        self.csv_table_frame = tk.Frame(self.output_view, bg=self.colors["panel_bg"])
         self.csv_table = ttk.Treeview(self.csv_table_frame, show="headings")
         self.csv_scroll_y = ttk.Scrollbar(
             self.csv_table_frame,
@@ -243,14 +298,14 @@ class MacroApp(tk.Tk):
         self.csv_table_frame.grid_rowconfigure(0, weight=1)
         self.csv_table_frame.grid_columnconfigure(0, weight=1)
 
-        self.output_image_label = tk.Label(self.output_view)
+        self.output_image_label = tk.Label(self.output_view, bg=self.colors["panel_bg"])
         self.output_image_label.pack()
 
         # Show prediction view on initial load
         self._show_prediction_view()
 
         # Container frame that holds grouped workflow action buttons in the navbar
-        self.button_frame = tk.Frame(self.navbar_frame)
+        self.button_frame = tk.Frame(self.navbar_frame, bg=self.colors["nav_bg"])
         self.button_frame.pack(fill="x")
 
         # Prediction section
@@ -259,10 +314,12 @@ class MacroApp(tk.Tk):
             text="Prediction",
             font=("Arial", 10, "bold"),
             anchor="w",
+            bg=self.colors["nav_bg"],
+            fg=self.colors["nav_text"],
         )
         self.prediction_section_label.pack(fill="x", pady=(0, 4))
 
-        self.prediction_section_frame = tk.Frame(self.button_frame)
+        self.prediction_section_frame = tk.Frame(self.button_frame, bg=self.colors["nav_bg"])
         self.prediction_section_frame.pack(fill="x", pady=(0, 10))
 
         self.predict_view_button = tk.Button(
@@ -270,6 +327,7 @@ class MacroApp(tk.Tk):
             text="Predict View",
             width=22,
             command=self._show_prediction_view,
+            **self.nav_button_style,
         )
         self.predict_view_button.pack(fill="x", pady=4)
 
@@ -279,10 +337,12 @@ class MacroApp(tk.Tk):
             text="EDA",
             font=("Arial", 10, "bold"),
             anchor="w",
+            bg=self.colors["nav_bg"],
+            fg=self.colors["nav_text"],
         )
         self.eda_section_label.pack(fill="x", pady=(0, 4))
 
-        self.eda_section_frame = tk.Frame(self.button_frame)
+        self.eda_section_frame = tk.Frame(self.button_frame, bg=self.colors["nav_bg"])
         self.eda_section_frame.pack(fill="x", pady=(0, 10))
 
         # Button to generate EDA outputs
@@ -291,6 +351,7 @@ class MacroApp(tk.Tk):
             text="Generate EDA Outputs",
             width=22,
             command=self.generate_eda,
+            **self.nav_button_style,
         )
         self.eda_button.pack(fill="x", pady=4)
 
@@ -300,6 +361,7 @@ class MacroApp(tk.Tk):
             text="View EDA Output",
             width=22,
             command=self.view_eda_output,
+            **self.nav_button_style,
         )
         self.view_eda_button.pack(fill="x", pady=4)
 
@@ -309,10 +371,12 @@ class MacroApp(tk.Tk):
             text="Training And Reports",
             font=("Arial", 10, "bold"),
             anchor="w",
+            bg=self.colors["nav_bg"],
+            fg=self.colors["nav_text"],
         )
         self.model_section_label.pack(fill="x", pady=(0, 4))
 
-        self.model_section_frame = tk.Frame(self.button_frame)
+        self.model_section_frame = tk.Frame(self.button_frame, bg=self.colors["nav_bg"])
         self.model_section_frame.pack(fill="x", pady=(0, 10))
 
         # Button to retrain the model from scratch
@@ -321,6 +385,7 @@ class MacroApp(tk.Tk):
             text="Train Model",
             width=22,
             command=self.train_model,
+            **self.nav_button_style,
         )
         self.train_button.pack(fill="x", pady=4)
 
@@ -329,6 +394,7 @@ class MacroApp(tk.Tk):
             text="Report View",
             width=22,
             command=self.view_classification_report,
+            **self.nav_button_style,
         )
         self.report_view_button.pack(fill="x", pady=4)
 
@@ -337,6 +403,8 @@ class MacroApp(tk.Tk):
             self.content_frame,
             text="Status: Ready",
             font=("Arial", 10),
+            bg=self.colors["panel_bg"],
+            fg=self.colors["text"],
         )
         self.status_label.pack(pady=10)
 
