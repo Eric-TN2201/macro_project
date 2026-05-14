@@ -12,7 +12,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from PIL import Image, ImageTk
 
-from src.config import EDA_OUTPUT_DIR, REPORT_OUTPUT_DIR
+from src.config import EDA_OUTPUT_DIR, RAW_DATA_DIR, REPORT_OUTPUT_DIR, SUPPORTED_EXTENSIONS
 from src.services.workflow_service import WorkflowService
 
 
@@ -32,9 +32,12 @@ class MacroApp(tk.Tk):
         self.workflow_service = workflow_service
         # Path of the image file chosen by the user; None until a file is picked
         self.selected_file: str | None = None
+        # User-selected class folders for multi-folder prediction workflow.
+        self.selected_folders: list[str] = []
         # Keep references to PhotoImage objects so they are not garbage-collected
         self.preview_image = None
         self.body_image = None
+        self.prediction_sample_images: list[ImageTk.PhotoImage] = []
         # Store available EDA output options (label -> (path, type)).
         self.eda_output_options: dict[str, tuple[Path, str]] = {}
         self.output_base_text = ""
@@ -77,29 +80,90 @@ class MacroApp(tk.Tk):
         self.body_frame = tk.Frame(self.content_frame)
         self.body_frame.pack(fill="both", expand=True)
 
-        # Prediction view (image preview + predicted class)
+        # Prediction view (folder selection + prediction results)
         self.prediction_view = tk.Frame(self.body_frame)
-        self.image_canvas = tk.Canvas(
-            self.prediction_view,
-            width=self.PREVIEW_SIZE[0],
-            height=self.PREVIEW_SIZE[1],
-            bg="white",
-            relief="groove",
-            highlightthickness=0,
-        )
-        self.image_canvas.pack(pady=10)
-        self.image_canvas.create_text(
-            self.PREVIEW_SIZE[0] // 2,
-            self.PREVIEW_SIZE[1] // 2,
-            text="No image selected",
-        )
 
         self.result_label = tk.Label(
             self.prediction_view,
-            text="Prediction result will appear here",
+            text="Prediction results",
             font=("Arial", 14),
         )
         self.result_label.pack(pady=10)
+
+        # On-screen list of user-selected class folders.
+        self.selected_folders_label = tk.Label(
+            self.prediction_view,
+            text="Selected class folders",
+            font=("Arial", 11, "bold"),
+            anchor="w",
+        )
+        self.selected_folders_label.pack(fill="x", padx=20)
+
+        # Main-view action button for selecting class folders.
+        self.add_folder_button = tk.Button(
+            self.prediction_view,
+            text="Select Class Folders",
+            width=24,
+            command=self.select_class_folders,
+        )
+        self.add_folder_button.pack(pady=(0, 10))
+
+        self.selected_folders_text = tk.Text(
+            self.prediction_view,
+            height=6,
+            wrap="word",
+            relief="groove",
+            bd=1,
+        )
+        self.selected_folders_text.pack(fill="x", padx=20, pady=(0, 10))
+        self.selected_folders_text.configure(state="disabled")
+
+        # Visual cards area to show sample image + prediction details for each class folder.
+        self.sample_cards_label = tk.Label(
+            self.prediction_view,
+            text="Sample prediction cards",
+            font=("Arial", 11, "bold"),
+            anchor="w",
+        )
+        self.sample_cards_label.pack(fill="x", padx=20)
+
+        self.sample_cards_frame = tk.Frame(self.prediction_view)
+        self.sample_cards_frame.pack(fill="both", expand=True, padx=20, pady=(0, 10))
+
+        self.sample_cards_canvas = tk.Canvas(
+            self.sample_cards_frame,
+            relief="groove",
+            bd=1,
+            highlightthickness=0,
+        )
+        self.sample_cards_scrollbar = tk.Scrollbar(
+            self.sample_cards_frame,
+            orient="vertical",
+            command=self.sample_cards_canvas.yview,
+        )
+        self.sample_cards_canvas.configure(yscrollcommand=self.sample_cards_scrollbar.set)
+        self.sample_cards_canvas.pack(side="left", fill="both", expand=True)
+        self.sample_cards_scrollbar.pack(side="right", fill="y")
+
+        self.sample_cards_inner = tk.Frame(self.sample_cards_canvas)
+        self.sample_cards_canvas_window = self.sample_cards_canvas.create_window(
+            (0, 0),
+            window=self.sample_cards_inner,
+            anchor="nw",
+        )
+        self.sample_cards_inner.bind("<Configure>", self._on_sample_cards_inner_configure)
+        self.sample_cards_canvas.bind("<Configure>", self._on_sample_cards_canvas_configure)
+
+        # Main-view action button for running predictions on selected folders.
+        self.predict_selected_main_button = tk.Button(
+            self.prediction_view,
+            text="Predict Selected Folders",
+            width=24,
+            command=self.predict_selected_folders,
+        )
+        self.predict_selected_main_button.pack(pady=(0, 10))
+
+        self._update_selected_folders_display()
 
         # Output view (summary/report text + optional chart image)
         self.output_view = tk.Frame(self.body_frame)
@@ -212,24 +276,6 @@ class MacroApp(tk.Tk):
         self.prediction_section_frame = tk.Frame(self.button_frame)
         self.prediction_section_frame.pack(fill="x", pady=(0, 10))
 
-        # Button to open a file-picker dialog
-        self.choose_button = tk.Button(
-            self.prediction_section_frame,
-            text="Choose Image",
-            width=22,
-            command=self.choose_image,
-        )
-        self.choose_button.pack(fill="x", pady=4)
-
-        # Button to classify the currently selected image
-        self.predict_button = tk.Button(
-            self.prediction_section_frame,
-            text="Predict Single Image",
-            width=22,
-            command=self.predict_image,
-        )
-        self.predict_button.pack(fill="x", pady=4)
-
         # Training and reports section
         self.model_section_label = tk.Label(
             self.button_frame,
@@ -302,6 +348,74 @@ class MacroApp(tk.Tk):
         """Display the prediction-focused body view."""
         self.output_view.pack_forget()
         self.prediction_view.pack(fill="both", expand=True)
+
+    def _update_selected_folders_display(self) -> None:
+        """Render selected class folder names in the prediction view."""
+        self.selected_folders_text.configure(state="normal")
+        self.selected_folders_text.delete("1.0", tk.END)
+
+        if not self.selected_folders:
+            self.selected_folders_text.insert("1.0", "No class folders selected.")
+        else:
+            folder_lines = [f"{index + 1}. {Path(path).name}" for index, path in enumerate(self.selected_folders)]
+            self.selected_folders_text.insert("1.0", "\n".join(folder_lines))
+
+        self.selected_folders_text.configure(state="disabled")
+
+    def _on_sample_cards_inner_configure(self, _: tk.Event) -> None:
+        """Update canvas scroll region when sample cards content changes."""
+        self.sample_cards_canvas.configure(scrollregion=self.sample_cards_canvas.bbox("all"))
+
+    def _on_sample_cards_canvas_configure(self, event: tk.Event) -> None:
+        """Keep sample cards frame width synced to the visible canvas width."""
+        self.sample_cards_canvas.itemconfigure(self.sample_cards_canvas_window, width=event.width)
+
+    def _clear_prediction_sample_cards(self) -> None:
+        """Remove existing sample prediction cards from the body view."""
+        for widget in self.sample_cards_inner.winfo_children():
+            widget.destroy()
+        self.prediction_sample_images.clear()
+
+    def _add_prediction_sample_card(
+        self,
+        folder_name: str,
+        image_path: Path | None,
+        prediction: str | None,
+        confidence: float | None,
+        error_message: str | None = None,
+    ) -> None:
+        """Create one visual card with sample image and prediction details."""
+        card = tk.Frame(self.sample_cards_inner, relief="groove", bd=1, padx=10, pady=10)
+        card.pack(fill="x", padx=8, pady=6)
+
+        preview_label = tk.Label(card, width=220, height=160, bg="#f5f5f5")
+        preview_label.pack(side="left", padx=(0, 12))
+
+        details: list[str] = [f"Actual folder: {folder_name}"]
+        if image_path is None or not image_path.exists():
+            details.append("Image file: N/A")
+            details.append(f"Result: {error_message or 'No valid image found.'}")
+        else:
+            sample_image = Image.open(image_path)
+            sample_image.thumbnail((220, 160))
+            preview_photo = ImageTk.PhotoImage(sample_image)
+            self.prediction_sample_images.append(preview_photo)
+            preview_label.configure(image=preview_photo)
+
+            details.append(f"Image file: {image_path.name}")
+            details.append(f"Predicted class: {prediction if prediction is not None else 'N/A'}")
+            details.append(
+                f"Confidence: {confidence:.2%}" if confidence is not None else "Confidence: N/A"
+            )
+
+        details_label = tk.Label(
+            card,
+            text="\n".join(details),
+            justify="left",
+            anchor="w",
+            font=("Arial", 10),
+        )
+        details_label.pack(side="left", fill="x", expand=True)
 
     def _show_output_view(
         self,
@@ -446,64 +560,197 @@ class MacroApp(tk.Tk):
         )
         self._display_body_image(output_path)
 
-    def choose_image(self) -> None:
-        """Open a file dialog and preview the selected image."""
-        file_path = filedialog.askopenfilename(
-            title="Select an image",
-            filetypes=[
-                ("Image files", "*.jpg *.jpeg *.png *.bmp"),
-                ("All files", "*.*"),
-            ],
+    def select_class_folders(self) -> None:
+        """Select class folders from any location (single folder or parent folder)."""
+        default_parent = RAW_DATA_DIR if RAW_DATA_DIR.exists() else Path.home()
+        selected_parent = filedialog.askdirectory(
+            title="Select a class folder or a parent folder",
+            initialdir=str(default_parent),
         )
-
-        # User cancelled the dialog – do nothing
-        if not file_path:
+        if not selected_parent:
             return
 
-        # Remember the path so predict_image can use it
-        self.selected_file = file_path
-        self._show_prediction_view()
+        selected_dir = Path(selected_parent)
 
-        # Resize image to fit the preview canvas while keeping aspect ratio
-        image = Image.open(file_path)
-        image.thumbnail(self.PREVIEW_SIZE)
+        # Case 1: selected path is a parent folder that contains class subfolders.
+        class_folders = sorted(path for path in selected_dir.iterdir() if path.is_dir())
+        initial_selected_folder: Path | None = None
 
-        # Convert to Tkinter-compatible format and display on canvas
-        self.preview_image = ImageTk.PhotoImage(image)
-        self.image_canvas.delete("all")  # Clear any previous image
-        self.image_canvas.create_image(
-            self.PREVIEW_SIZE[0] // 2,
-            self.PREVIEW_SIZE[1] // 2,
-            image=self.preview_image,
-            anchor="center",
-        )
+        # Case 2: selected path is itself a class folder; offer sibling class folders too.
+        if not class_folders:
+            direct_images = [
+                path
+                for path in selected_dir.iterdir()
+                if path.is_file() and path.suffix.lower() in SUPPORTED_EXTENSIONS
+            ]
+            if not direct_images:
+                messagebox.showwarning(
+                    "No class folders",
+                    f"No class folders or valid images were found in:\n{selected_dir}",
+                )
+                return
 
-        file_name = Path(file_path).name
-        self.status_label.configure(text=f"Status: Selected {file_name}")
+            sibling_candidates = sorted(path for path in selected_dir.parent.iterdir() if path.is_dir())
+            usable_siblings = []
+            for folder in sibling_candidates:
+                has_valid_image = any(
+                    file_path.is_file() and file_path.suffix.lower() in SUPPORTED_EXTENSIONS
+                    for file_path in folder.iterdir()
+                )
+                if has_valid_image:
+                    usable_siblings.append(folder)
 
-    def predict_image(self) -> None:
-        """Predict the class of the selected image."""
-        self._show_prediction_view()
-        # Guard: a file must be selected before prediction can run
-        if not self.selected_file:
-            messagebox.showwarning("No image", "Please choose an image first.")
+            class_folders = usable_siblings if usable_siblings else [selected_dir]
+            initial_selected_folder = selected_dir
+
+        if not class_folders:
+            messagebox.showwarning(
+                "No class folders",
+                f"No usable class folders were found in:\n{selected_dir}",
+            )
             return
 
-        try:
-            prediction, confidence = self.workflow_service.predict_image_with_confidence(
-                self.selected_file
+        # Multi-select dialog for choosing class folders in one step.
+        selected_paths: list[str] = []
+        selector = tk.Toplevel(self)
+        selector.title("Select class folders")
+        dialog_width = 520
+        dialog_height = 420
+        position_x = (self.winfo_screenwidth() - dialog_width) // 2
+        position_y = (self.winfo_screenheight() - dialog_height) // 2
+        selector.geometry(f"{dialog_width}x{dialog_height}+{position_x}+{position_y}")
+        selector.transient(self)
+        selector.grab_set()
+
+        instruction = tk.Label(
+            selector,
+            text=(
+                "Select one or more class folders (Ctrl/Shift for multi-select):\n"
+                f"Source: {selected_dir}"
+            ),
+            anchor="w",
+            justify="left",
+        )
+        instruction.pack(fill="x", padx=12, pady=(12, 6))
+
+        list_frame = tk.Frame(selector)
+        list_frame.pack(fill="both", expand=True, padx=12, pady=(0, 10))
+
+        folder_listbox = tk.Listbox(list_frame, selectmode=tk.EXTENDED)
+        folder_scrollbar = tk.Scrollbar(list_frame, orient="vertical", command=folder_listbox.yview)
+        folder_listbox.configure(yscrollcommand=folder_scrollbar.set)
+        folder_listbox.pack(side="left", fill="both", expand=True)
+        folder_scrollbar.pack(side="right", fill="y")
+
+        for folder in class_folders:
+            folder_listbox.insert(tk.END, folder.name)
+
+        # If user picked a direct class folder, preselect it in the list for convenience.
+        if initial_selected_folder is not None:
+            for index, folder in enumerate(class_folders):
+                if folder == initial_selected_folder:
+                    folder_listbox.selection_set(index)
+                    folder_listbox.see(index)
+                    break
+
+        button_frame = tk.Frame(selector)
+        button_frame.pack(fill="x", padx=12, pady=(0, 12))
+
+        def _confirm_selection() -> None:
+            indices = folder_listbox.curselection()
+            if not indices:
+                messagebox.showwarning(
+                    "No folders selected",
+                    "Please select at least one class folder.",
+                    parent=selector,
+                )
+                return
+
+            selected_paths.extend(str(class_folders[index]) for index in indices)
+            selector.destroy()
+
+        def _cancel_selection() -> None:
+            selector.destroy()
+
+        confirm_button = tk.Button(button_frame, text="Confirm", width=12, command=_confirm_selection)
+        confirm_button.pack(side="right", padx=(8, 0))
+        cancel_button = tk.Button(button_frame, text="Cancel", width=12, command=_cancel_selection)
+        cancel_button.pack(side="right")
+
+        self.wait_window(selector)
+
+        if not selected_paths:
+            return
+
+        self.selected_folders = selected_paths
+        selected_count = len(self.selected_folders)
+
+        self._show_prediction_view()
+        self._update_selected_folders_display()
+        self._clear_prediction_sample_cards()
+        self.status_label.configure(text=f"Status: Selected {selected_count} class folder(s)")
+
+    def predict_selected_folders(self) -> None:
+        """Predict one sample image from each manually selected class folder."""
+        if len(self.selected_folders) < 3:
+            messagebox.showwarning(
+                "Not enough selected folders",
+                "Please select at least 3 class folders before prediction.",
+            )
+            return
+
+        self._show_prediction_view()
+        self.status_label.configure(text="Status: Predicting selected folders...")
+        self.update_idletasks()
+        self._clear_prediction_sample_cards()
+
+        for folder_path in self.selected_folders:
+            class_folder = Path(folder_path)
+            folder_name = class_folder.name
+
+            if not class_folder.exists() or not class_folder.is_dir():
+                self._add_prediction_sample_card(
+                    folder_name=folder_name,
+                    image_path=None,
+                    prediction=None,
+                    confidence=None,
+                    error_message="Folder is missing or not accessible.",
+                )
+                continue
+
+            valid_images = sorted(
+                path
+                for path in class_folder.iterdir()
+                if path.is_file() and path.suffix.lower() in SUPPORTED_EXTENSIONS
             )
 
-            if confidence is not None:
-                self.result_label.configure(
-                    text=f"Predicted class: {prediction}\nConfidence: {confidence:.2%}"
+            if not valid_images:
+                self._add_prediction_sample_card(
+                    folder_name=folder_name,
+                    image_path=None,
+                    prediction=None,
+                    confidence=None,
+                    error_message="No valid image files found in this folder.",
                 )
-            else:
-                self.result_label.configure(text=f"Predicted class: {prediction}")
-            self.status_label.configure(text="Status: Prediction completed")
-        except Exception as error:
-            messagebox.showerror("Prediction error", str(error))
-            self.status_label.configure(text="Status: Prediction failed")
+                continue
+
+            image_path = valid_images[0]
+            prediction, confidence = self.workflow_service.predict_image_with_confidence(
+                str(image_path)
+            )
+
+            confidence_text = "N/A"
+            if confidence is not None:
+                confidence_text = f"{confidence:.2%}"
+
+            self._add_prediction_sample_card(
+                folder_name=folder_name,
+                image_path=image_path,
+                prediction=prediction,
+                confidence=confidence,
+            )
+
+        self.status_label.configure(text="Status: Completed selected-folder predictions")
 
     def show_summary(self) -> None:
         """Generate and display a concise dataset summary in a dialog."""
