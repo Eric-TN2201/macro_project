@@ -17,4 +17,4 @@ Assignment: Assignment 3 - Macroinvertebrate Image Analysis System
 | Select class folders | Click `Select Class Folders`, choose a parent folder, then select at least 3 class folders | Selected class folders are listed in the prediction panel | Selected folders displayed | ![Select class folders](docs/screenshots/gui_select_class_folders.png) |
 | Predict selected folders | Click `Predict Selected Folders` after selecting at least 3 folders | Sample cards show actual folder, image, predicted class, and confidence | Prediction cards displayed | ![Predict selected folders](docs/screenshots/gui_predict_selected_folders.png) |
 | Select fewer than 3 class folders | In the folder picker, select fewer than 3 items and click `Confirm` | Warning message asks user to select at least 3 class folders | Warning message displayed | ![Minimum folders warning](docs/screenshots/gui_minimum_folders_warning.png) |
-| Unsupported file type handling | In console app, option `4`, enter a `.txt` file path | Error shows unsupported file type and supported extensions | Unsupported file type message displayed | ![Unsupported file type](docs/screenshots/unsupported_file_type.png) |
+
