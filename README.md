@@ -138,6 +138,9 @@ macro_project/
 |-- data/
 |   |-- raw/
 |
+|-- docs/
+|   |--screenshots
+|
 |-- outputs/
 |   |-- eda/
 |   |-- models/
@@ -329,7 +332,7 @@ outputs/reports/confusion_matrix.png
 Manual testing evidence is recorded in:
 
 ```text
-MANUAL_TESTING.md
+MANUAL_TEST.md
 ```
 
 The testing covers:
@@ -340,7 +343,6 @@ The testing covers:
 - GUI folder-based prediction and report viewing
 - Invalid image path handling
 - Unsupported file type handling
-- Invalid menu option handling
 - GUI folder selection and prediction
 - GUI EDA and report output viewing
 
