@@ -1,3 +1,10 @@
+Student Name:
++  u3281913
++   u3293786
+Unit: Software Technology 1 (8995)
+Assignment: Assignment 3 - Macroinvertebrate Image Analysis System
+
+
 # Macroinvertebrate Image Analysis System
 
 ## Project Goal
@@ -26,7 +33,8 @@ The project was developed for Software Technology 1 (8995), Assignment 3.
 - Model evaluation using accuracy, classification report, and confusion matrix
 - Saved trained model using Joblib
 - Menu-driven console application
-- Tkinter GUI with image preview, prediction, and confidence score
+- Tkinter GUI with folder-based prediction, sample cards, and confidence score
+- In-app EDA and report viewers with selectable outputs
 
 ## Project Stages
 
@@ -53,6 +61,12 @@ Image preprocessing pipeline:
 
 ```text
 Raw image
+|   |-- utils/
+|       |-- io/
+|       |   |-- dataset_helpers.py
+|       |   |-- output_helpers.py
+|       |-- ui/
+|           |-- dialog_helpers.py
 → greyscale
 → resize to 128x128
 → normalise pixel values to 0–1
@@ -61,6 +75,12 @@ Raw image
 ```
 
 The classifier uses:
+ - Switch to a prediction view
+ - Select one or more class folders
+ - Preview a sample image from each selected folder
+ - Predict the macroinvertebrate class for each sample
+ - View the prediction confidence score
+ - View EDA outputs and report outputs inside the app
 
 - `RandomForestClassifier`
 - `class_weight="balanced"`
@@ -73,9 +93,10 @@ The classifier uses:
 ### Stage 3: Application Deployment
 
 Stage 3 provides two user interfaces:
-
 1. A menu-driven console application
 2. A Tkinter GUI application
+
+The application also uses shared helpers in `src.utils.io.*` and `src.utils.ui.*`.
 
 The console application allows users to:
 
@@ -88,10 +109,12 @@ The console application allows users to:
 
 The GUI allows users to:
 
-- Choose an image
-- Preview the selected image
-- Predict the macroinvertebrate class
+- Switch to a prediction view
+- Select one or more class folders
+- Preview a sample image from each selected folder
+- Predict the macroinvertebrate class for each sample
 - View the prediction confidence score
+- View EDA outputs and report outputs inside the app
 
 ## Python Packages Used
 
@@ -135,6 +158,13 @@ macro_project/
 |       |-- image_preprocessor.py
 |       |-- classifier_service.py
 |       |-- workflow_service.py
+|
+|   |-- utils/
+|       |-- io/
+|       |   |-- dataset_helpers.py
+|       |   |-- output_helpers.py
+|       |-- ui/
+|           |-- dialog_helpers.py
 |
 |-- README.md
 |-- requirements.txt
@@ -254,10 +284,11 @@ python -m src.app
 GUI workflow:
 
 ```text
-Choose Image
-→ Preview Image
-→ Predict
+Predict View
+→ Select Class Folders
+→ Predict Selected Folders
 → View predicted class and confidence score
+→ View report / EDA outputs in-app
 ```
 
 ## Generated Outputs
@@ -290,6 +321,8 @@ outputs/reports/confusion_matrix.png
 | `WorkflowService` | Coordinates Stage 1, Stage 2, and prediction workflows |
 | `ConsoleApp` | Provides menu-driven console interaction |
 | `MacroApp` | Provides Tkinter GUI interaction |
+| `src.utils.io.*` | Shared helpers for dataset, EDA, and report file handling |
+| `src.utils.ui.*` | Shared helpers for GUI dialogs |
 
 ## Testing
 
@@ -304,11 +337,12 @@ The testing covers:
 - Dataset summary generation
 - EDA output generation
 - Model training
-- Valid image prediction
+- GUI folder-based prediction and report viewing
 - Invalid image path handling
 - Unsupported file type handling
 - Invalid menu option handling
-- GUI image selection and prediction
+- GUI folder selection and prediction
+- GUI EDA and report output viewing
 
 ## Notes
 

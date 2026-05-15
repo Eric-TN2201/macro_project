@@ -1,3 +1,9 @@
+# Student Name:
+# +  u3281913
+# +   u3293786
+# Unit: Software Technology 1 (8995)
+# Assignment: Assignment 3 - Macroinvertebrate Image Analysis System
+
 from pathlib import Path
 import tkinter as tk
 from tkinter import messagebox
@@ -26,7 +32,7 @@ def select_class_folders_dialog(
     instruction = tk.Label(
         selector,
         text=(
-            "Select one or more class folders (Ctrl/Shift for multi-select):\n"
+            "Select three or more class folders (Ctrl/Shift for multi-select):\n"
             f"Source: {source_dir}"
         ),
         anchor="w",
@@ -62,7 +68,15 @@ def select_class_folders_dialog(
         if not indices:
             messagebox.showwarning(
                 "No folders selected",
-                "Please select at least one class folder.",
+                "Please select at least three class folders.",
+                parent=selector,
+            )
+            return
+
+        if len(indices) < 3:
+            messagebox.showwarning(
+                "Not enough folders selected",
+                "Please select at least three class folders.",
                 parent=selector,
             )
             return

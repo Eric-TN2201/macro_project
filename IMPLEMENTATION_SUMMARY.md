@@ -1,3 +1,9 @@
+Student Name:
++  u3281913
++   u3293786
+Unit: Software Technology 1 (8995)
+Assignment: Assignment 3 - Macroinvertebrate Image Analysis System
+
 # Implementation Summary
 
 ## 1. Project Title and Group Members
@@ -24,31 +30,33 @@ Dataset images → Dataset indexing → EDA outputs → Image preprocessing → 
 
 ## 4. Class and Module Overview
 
-| Class / Module        |           Responsibility                  |
-|-----------------------|----------------------------------------|
-| `ImageRecord`         | Stores metadata for one indexed image                                                     |
-| `DatasetIndexer`      | Scans the dataset and creates a structured Pandas DataFrame                               |
-| `EDAService`          | Generates summary tables, class distribution charts, image size charts, and sample grids  |
-| `ImagePreprocessor`   | Loads, resizes, normalises, and flattens images                                           |
-| `ClassifierService`   | Trains, evaluates, saves, and loads the classification model                              |
-| `WorkflowService`     | Coordinates the full workflow across Stage 1, Stage 2, and prediction                     |
-| `ConsoleApp`          | Provides a menu-driven console interface                                                  |
-| `MacroApp`            | Provides a Tkinter GUI for image selection and prediction                                 |
+| Class / Module | Responsibility |
+|---|---|
+| `ImageRecord` | Stores metadata for one indexed image |
+| `DatasetIndexer` | Scans the dataset and creates a structured Pandas DataFrame |
+| `EDAService` | Generates summary tables, class distribution charts, image size charts, and sample grids |
+| `ImagePreprocessor` | Loads, resizes, normalises, and flattens images |
+| `ClassifierService` | Trains, evaluates, saves, and loads the classification model |
+| `WorkflowService` | Coordinates the full workflow across Stage 1, Stage 2, and prediction |
+| `ConsoleApp` | Provides a menu-driven console interface |
+| `MacroApp` | Provides a Tkinter GUI for folder-based prediction and report viewing |
+| `src/utils/io/*` | Shared helpers for dataset and output handling |
+| `src/utils/ui/*` | Shared helpers for GUI dialog handling |
 
 ## 5. Python Packages Used
 
-| Package           |                           Purpose                                
-|-------------------|-------------------------------------------------------------------|
-| `pathlib`         | File and folder path handling                                     |
-| `pandas`          | Store image metadata and create summary tables                    |
-| `numpy`           | Numeric array handling for image features                         |
-| `opencv-python`   | Read, resize, and preprocess images                               |
-| `matplotlib`      | Create visual outputs                                             |
-| `seaborn`         | Create class distribution and confusion matrix visualisations     |
-| `scikit-learn`    | Train/test split, RandomForestClassifier, evaluation metrics      |
-| `joblib`          | Save and load trained model                                       |
-| `tkinter`         | GUI deployment                                                    |
-| `Pillow`          | Display selected images in the GUI                                |
+| Package | Purpose |
+|---|---|
+| `pathlib` | File and folder path handling |
+| `pandas` | Store image metadata and create summary tables |
+| `numpy` | Numeric array handling for image features |
+| `opencv-python` | Read, resize, and preprocess images |
+| `matplotlib` | Create visual outputs |
+| `seaborn` | Create class distribution and confusion matrix visualisations |
+| `scikit-learn` | Train/test split, RandomForestClassifier, evaluation metrics |
+| `joblib` | Save and load trained model |
+| `tkinter` | GUI deployment |
+| `Pillow` | Display selected images in the GUI |
 
 ## 6. Key Features Implemented
 
@@ -73,12 +81,14 @@ Dataset images → Dataset indexing → EDA outputs → Image preprocessing → 
 
 - Created a menu-driven console application
 - Created a Tkinter GUI application
-- Added image selection, preview, prediction, and confidence score
+- Added folder selection, sample preview cards, prediction, and confidence score
+- Added in-app EDA and report viewing with selectable outputs
 - Added error handling for invalid input and missing model files
 
 ## 7. Testing Summary
 
 Manual testing was completed for normal and error scenarios. The testing included dataset summary generation, EDA output generation, model training, valid image prediction, invalid image path handling, unsupported file type handling, invalid menu input, and GUI prediction.
+Manual testing was updated to match the current GUI workflow, including folder selection, EDA viewing, and report viewing.
 
 Detailed testing evidence is recorded in `MANUAL_TESTING.md`.
 
