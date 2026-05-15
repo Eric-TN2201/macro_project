@@ -96,8 +96,6 @@ Stage 3 provides two user interfaces:
 1. A menu-driven console application
 2. A Tkinter GUI application
 
-The application also uses shared helpers in `src.utils.io.*` and `src.utils.ui.*`.
-
 The console application allows users to:
 
 - Show dataset summary
@@ -175,44 +173,12 @@ macro_project/
 |-- Implementation_Summary.md
 ```
 
-## Dataset Setup
-
-Place the unzipped dataset inside:
-
-```text
-data/raw/
-```
-
-The dataset should be organised by class folders:
-
-```text
-data/raw/
-|-- Class_1/
-|   |-- image1.jpg
-|   |-- image2.jpg
-|
-|-- Class_2/
-|   |-- image1.jpg
-|   |-- image2.jpg
-```
-
-Each folder name is used as the image label.
-
-Example:
-
-```text
-data/raw/
-|-- Gammarus sp/
-|-- Asellus sp/
-|-- Leptophlebiidae sp/
-```
-
 ## Installation Instructions
 
 ### 1. Clone the repository
 
 ```bash
-git clone <repository-link>
+git clone https://github.com/Eric-TN2201/macro_project.git
 cd macro_project
 ```
 
@@ -345,24 +311,3 @@ The testing covers:
 - Unsupported file type handling
 - GUI folder selection and prediction
 - GUI EDA and report output viewing
-
-## Notes
-
-The `data/`, `outputs/`, and trained model files should not normally be committed to GitHub because they can be large or generated locally.
-
-Recommended `.gitignore` entries:
-
-```gitignore
-data/
-outputs/
-*.joblib
-*.pkl
-*.h5
-*.keras
-__pycache__/
-*.pyc
-```
-
-## Acknowledgement
-
-Some image loading, preprocessing, visualisation, and classification techniques were adapted from ST1 Week 5 to Week 8 tutorial and lab activities. The code was modified and integrated into a modular object-oriented project structure for this Assignment 3 project.
